@@ -1,0 +1,2574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAccess — Philippine Transport</title>
+  <meta name="description" content="SAccess helps you discover affordable Philippine transportation — Bus, E-Jeep, Jeepney, UV Express, Tricycle and Motorcycle. Compare routes, fares and track vehicles." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+
+:root {
+  --bg: #F7F9F8;
+  --bg-soft: #EFF3F2;
+  --surface: #FFFFFF;
+  --ink: #0F1E17;
+  --muted: #647770;
+  --line: #E4EAE7;
+  --primary: #22C55E;
+  --primary-ink: #0D7A3D;
+  --primary-soft: #E8F8EE;
+  --accent: #0EA5E9;
+  --accent-soft: #E3F3FC;
+  --amber: #F59E0B;
+  --amber-soft: #FEF3E0;
+  --red: #EF4444;
+  --red-soft: #FEE2E2;
+  --violet: #8B5CF6;
+  --violet-soft: #F3E8FF;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 11px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(15,30,23,.05);
+  --shadow-md: 0 10px 30px -12px rgba(15,30,23,.18);
+  --shadow-lg: 0 24px 50px -20px rgba(15,30,23,.25);
+  --font: "Plus Jakarta Sans", system-ui, sans-serif;
+  --max: 1160px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+p { margin: 0; }
+a { text-decoration: none; color: inherit; cursor: pointer; }
+button { font-family: inherit; cursor: pointer; border: none; }
+input, select, textarea { font-family: inherit; outline: none; background: transparent; }
+input, select { border: none; }
+img, svg { display: block; }
+
+.container { max-width: var(--max); margin: 0 auto; padding: 48px 24px; }
+.container.narrow { max-width: 760px; }
+.muted { color: var(--muted); }
+
+/* ---------- Navigation ---------- */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,.82);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-inner {
+  max-width: var(--max); margin: 0 auto;
+  display: flex; align-items: center; gap: 20px;
+  padding: 14px 24px;
+}
+.logo { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 1.28rem; }
+.logo-mark { width: 32px; height: 32px; }
+.links { display: flex; gap: 3px; flex: 1; flex-wrap: wrap; }
+.links a {
+  padding: 8px 13px; border-radius: var(--radius-pill);
+  font-weight: 600; font-size: .9rem; color: var(--muted);
+  transition: .2s; white-space: nowrap;
+}
+.links a:hover { color: var(--ink); background: var(--bg-soft); }
+.links a.active { color: var(--primary-ink); background: var(--primary-soft); }
+.nav-actions { display: flex; gap: 8px; align-items: center; }
+
+.hamburger { display: none; flex-direction: column; gap: 4px; padding: 6px; background: none; }
+.hamburger span { width: 22px; height: 2.4px; background: var(--ink); border-radius: 2px; transition: .3s; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 13px 24px; border-radius: var(--radius-pill);
+  font-weight: 700; font-size: .95rem;
+  transition: transform .18s, box-shadow .18s, background .18s;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.97); }
+.btn-sm { padding: 9px 16px; font-size: .88rem; }
+.btn-block { width: 100%; }
+.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 6px 18px -6px rgba(34,197,94,.55); }
+.btn-primary:hover { background: var(--primary-ink); transform: translateY(-2px); }
+.btn-light { background: #fff; color: var(--primary-ink); }
+.btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn-ghost:hover { border-color: var(--primary); color: var(--primary-ink); }
+.link { color: var(--primary-ink); font-weight: 700; font-size: .92rem; }
+.link:hover { text-decoration: underline; }
+.back { display: inline-block; margin-bottom: 16px; }
+
+/* ---------- Pages ---------- */
+.page { display: none; animation: fade .35s ease; }
+.page.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.page-title { font-size: clamp(1.7rem, 3vw, 2.4rem); margin-bottom: 6px; }
+.page-sub { color: var(--muted); margin-bottom: 28px; }
+
+/* ---------- Auth ---------- */
+.auth-wrap {
+  min-height: 100vh; display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px;
+  max-width: 1080px; margin: 0 auto; padding: 48px 24px; align-items: center;
+}
+.auth-brand h1 { font-size: clamp(2.2rem, 4.5vw, 3.3rem); margin: 20px 0 14px; line-height: 1.15; }
+.auth-brand p { max-width: 430px; font-size: 1.05rem; }
+.auth-logo { font-size: 1.6rem; }
+.auth-logo .logo-mark { width: 42px; height: 42px; }
+.auth-points { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+.auth-points span {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  padding: 9px 16px; font-weight: 600; font-size: .88rem;
+}
+.auth-card {
+  background: var(--surface); border-radius: var(--radius-lg);
+  padding: 30px; box-shadow: var(--shadow-lg); border: 1px solid var(--line);
+}
+.auth-tabs { margin-bottom: 22px; }
+.auth-form h2 { font-size: 1.4rem; }
+.auth-form > p.muted { margin-bottom: 20px; }
+.auth-form label { display: block; font-size: .86rem; font-weight: 700; margin-bottom: 13px; color: var(--ink); }
+.auth-form input, .auth-form select, .reg-form input, .reg-form select {
+  display: block; width: 100%; margin-top: 6px;
+  padding: 13px 15px; border: 1.5px solid var(--line); border-radius: 13px;
+  font-size: .95rem; background: var(--surface); transition: .2s;
+}
+.auth-form input:focus, .auth-form select:focus, .reg-form input:focus, .reg-form select:focus { border-color: var(--primary); }
+.auth-form .switch { text-align: center; margin-top: 18px; font-size: .9rem; color: var(--muted); }
+.auth-form .switch a { color: var(--primary-ink); font-weight: 700; }
+.auth-form .btn { margin-top: 8px; }
+
+/* ---------- Hero ---------- */
+.hero {
+  background:
+    radial-gradient(60% 90% at 85% 10%, #DCF6E8 0%, transparent 55%),
+    radial-gradient(50% 80% at 8% 90%, #D8EFFB 0%, transparent 55%),
+    var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.hero-inner {
+  max-width: var(--max); margin: 0 auto; padding: 64px 24px 56px;
+  display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center;
+}
+.eyebrow {
+  display: inline-block; font-size: .8rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--primary-ink);
+  background: var(--primary-soft); padding: 7px 14px; border-radius: var(--radius-pill);
+  margin-bottom: 18px;
+}
+.hero h1 { font-size: clamp(2.4rem, 5vw, 3.9rem); margin-bottom: 16px; }
+.hero h1 .grad { background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { color: var(--muted); font-size: 1.08rem; max-width: 480px; margin-bottom: 28px; }
+
+.search-box {
+  background: var(--surface); border-radius: 20px;
+  box-shadow: var(--shadow-lg); padding: 12px;
+  display: flex; align-items: center; gap: 6px; max-width: 560px;
+}
+.search-box .field {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 13px; min-width: 0;
+}
+.search-box .field:hover { background: var(--bg-soft); }
+.search-box .field label { display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.search-box .field input { width: 100%; font-size: .98rem; font-weight: 600; color: var(--ink); }
+.search-box .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.search-box .dot.from { background: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.search-box .dot.to { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search-box .swap {
+  background: var(--bg-soft); border-radius: 10px; width: 36px; height: 36px;
+  font-size: 1rem; color: var(--muted); flex-shrink: 0; transition: .3s;
+}
+.search-box .swap:hover { color: var(--ink); transform: rotate(180deg); }
+.search-box .search-btn { flex-shrink: 0; padding: 14px 22px; }
+.search-box.col { flex-direction: column; align-items: stretch; max-width: none; }
+.search-box.col .field { border: 1.5px solid var(--line); border-radius: 14px; margin-bottom: 8px; }
+.search-box.col .field:focus-within { border-color: var(--primary); }
+.search-box.col .swap { align-self: center; margin: -14px 0; }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.chip {
+  background: var(--surface); border: 1.5px solid var(--line);
+  padding: 7px 15px; border-radius: var(--radius-pill);
+  font-size: .86rem; font-weight: 600; color: var(--muted); cursor: pointer; transition: .2s;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary-ink); }
+
+.hero-art { position: relative; }
+.map-preview { position: relative; overflow: hidden; border-radius: var(--radius-lg); background: #EAF2EE; box-shadow: var(--shadow-lg); }
+.map-preview svg { width: 100%; height: auto; }
+.road { stroke: #fff; stroke-width: 10; fill: none; stroke-linecap: round; }
+.pin { fill: #fff; stroke-width: 3; }
+.pin.origin { stroke: var(--primary); }
+.pin.dest { stroke: var(--accent); }
+.vehicle { fill: #fff; stroke-width: 2.5; }
+.vehicle.v1 { stroke: var(--primary); transform: translate(210px,200px); }
+.vehicle.v2 { stroke: var(--amber); transform: translate(120px,248px); }
+.vehicle.v3 { stroke: var(--accent); transform: translate(260px,95px); }
+.float-card {
+  position: absolute; left: 14px; bottom: 14px;
+  background: var(--surface); border-radius: 13px; padding: 10px 14px;
+  box-shadow: var(--shadow-md); font-size: .83rem;
+  display: flex; flex-direction: column; animation: bob 3s ease-in-out infinite;
+}
+.float-card b { font-size: .88rem; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+/* ---------- Section head / afford ---------- */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 40px 0 18px; }
+.section-head h2 { font-size: 1.55rem; }
+
+.afford {
+  margin-top: 48px; background: linear-gradient(120deg, var(--primary-soft), var(--accent-soft));
+  border-radius: var(--radius-lg); padding: 36px; border: 1px solid var(--line);
+}
+.afford h2 { font-size: 1.7rem; }
+.afford p { color: var(--muted); max-width: 560px; margin-top: 6px; }
+.afford-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.afford-pills span {
+  background: var(--surface); border-radius: var(--radius-pill); padding: 9px 16px;
+  font-weight: 700; font-size: .88rem; color: var(--primary-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Grids & cards ---------- */
+.grid { display: grid; gap: 16px; }
+.grid.cats { grid-template-columns: repeat(5, 1fr); }
+.grid.cards { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+
+.cat-card {
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-md);
+  padding: 20px; text-align: center; cursor: pointer; transition: .22s;
+}
+.cat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: transparent; }
+.cat-icon {
+  width: 52px; height: 52px; border-radius: 16px; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+}
+.cat-card h3 { font-size: 1rem; }
+.cat-card p { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.cat-card .cat-details { margin: 10px 0 8px; font-size: .8rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.cat-card .cat-actions { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.cat-card .cat-actions .btn { font-size: .75rem; padding: 6px 12px; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin: 32px 0 40px;
+}
+.feature-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  transition: .22s;
+}
+.feature-item:hover {
+  box-shadow: var(--shadow-md);
+  border-color: transparent;
+  transform: translateY(-3px);
+}
+.feature-item svg {
+  color: var(--primary-ink);
+  margin-bottom: 12px;
+}
+.feature-item h3 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+.feature-item p {
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+@media (max-width: 780px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.card {
+  background: var(--surface); border-radius: var(--radius-md);
+  padding: 20px; box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line); transition: .22s;
+  display: flex; flex-direction: column;
+}
+.card:hover { box-shadow: var(--shadow-md); border-color: transparent; transform: translateY(-3px); }
+.card .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.card .vtype { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; }
+.card .vtype .ic { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+.card h3 { font-size: 1.05rem; margin-bottom: 4px; }
+.card .route { color: var(--muted); font-size: .88rem; margin-bottom: 12px; }
+.card .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.card .meta span { background: var(--bg-soft); border-radius: 8px; padding: 5px 10px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.card .eta { color: var(--ink); }
+.card .actions { display: flex; gap: 8px; margin-top: auto; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; font-weight: 700; padding: 5px 11px; border-radius: var(--radius-pill); white-space: nowrap; }
+.badge.green { background: var(--primary-soft); color: var(--primary-ink); }
+.badge.amber { background: var(--amber-soft); color: #B45309; }
+.badge.red { background: var(--red-soft); color: #B91C1C; }
+.badge.blue { background: var(--accent-soft); color: #0C6A9D; }
+.badge.violet { background: var(--violet-soft); color: #6D28D9; }
+
+/* ---------- CTA banner ---------- */
+.cta-banner {
+  margin-top: 48px; border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, #16A34A, #0EA5E9);
+  color: #fff; padding: 40px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  box-shadow: var(--shadow-lg);
+}
+.cta-banner h2 { font-size: 1.7rem; }
+.cta-banner p { opacity: .9; margin-top: 6px; }
+
+/* ---------- Search page ---------- */
+.search-panel { background: var(--surface); border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--line); }
+.suggested, .recent { margin-top: 22px; }
+.suggested h4, .recent h4 { font-size: .92rem; margin-bottom: 10px; color: var(--muted); }
+.recent-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.results-heading { margin: 28px 0 14px; font-size: 1.1rem; }
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+.filter-bar select {
+  margin-left: auto; padding: 10px 14px; border: 1.5px solid var(--line);
+  border-radius: var(--radius-pill); font-weight: 600; font-size: .88rem; background: var(--surface);
+}
+
+/* ---------- Track / map ---------- */
+.track-wrap { display: grid; grid-template-columns: 1fr 360px; gap: 0; min-height: calc(100vh - 70px); }
+.map-stage { position: relative; background: #EAF2EE; overflow: hidden; }
+.map-stage { position: relative; background: #EAF2EE; overflow: hidden; min-height: 480px; }
+#trackMapContainer { height: 100%; width: 100%; min-height: 480px; }
+.map-stage .leaflet-container { height: 100%; width: 100%; min-height: 480px; }
+.map-legend {
+  position: absolute; left: 14px; top: 14px; z-index: 1000;
+  background: rgba(255,255,255,.9);
+  border-radius: var(--radius-pill); padding: 7px 14px; font-size: .8rem; font-weight: 700; color: var(--muted);
+}
+.map-zoom {
+  position: absolute; right: 18px; z-index: 1000;
+  width: 40px; height: 40px;
+  background: var(--surface); border-radius: 12px; font-size: 1.3rem; color: var(--ink);
+  box-shadow: var(--shadow-md);
+  display: flex; align-items: center; justify-content: center;
+}
+.map-zoom[data-zoom="in"] { top: 18px; }
+.map-zoom[data-zoom="out"] { top: 68px; }
+.blocks rect { fill: #fff; opacity: .65; }
+.map-stage .route-line { stroke: var(--primary); stroke-width: 6; fill: none; stroke-linecap: round; opacity: .8; }
+.map-stage .route-line.dim { stroke: var(--amber); opacity: .5; stroke-width: 4; }
+.map-stage .stop-mark { fill: #fff; stroke: var(--primary); stroke-width: 3; }
+.map-stage .stop-mark.dest { stroke: var(--accent); }
+.veh-mark { fill: #fff; stroke-width: 3; cursor: pointer; transition: .3s; }
+.veh-mark:hover { transform: scale(1.3); }
+.veh-mark text { font-size: 7px; font-weight: 800; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.user-mark { stroke: var(--accent); fill: var(--accent); }
+.user-mark .pulse { fill: transparent; stroke: var(--accent); opacity: .35; }
+.user-mark circle:last-child { fill: var(--accent); stroke: #fff; stroke-width: 2; }
+.map-legend {
+  position: absolute; left: 14px; top: 14px; background: rgba(255,255,255,.9);
+  border-radius: var(--radius-pill); padding: 7px 14px; font-size: .8rem; font-weight: 700; color: var(--muted);
+}
+.map-zoom {
+  position: absolute; right: 18px; width: 40px; height: 40px;
+  background: var(--surface); border-radius: 12px; font-size: 1.3rem; color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+.map-zoom[data-zoom="in"] { top: 18px; }
+.map-zoom[data-zoom="out"] { top: 68px; }
+
+.track-panel { background: var(--surface); border-left: 1px solid var(--line); padding: 28px; display: flex; flex-direction: column; }
+.track-panel h3 { font-size: 1.3rem; }
+.track-panel .eta-big { font-size: 3rem; font-weight: 800; color: var(--primary-ink); line-height: 1; margin: 22px 0 2px; }
+.track-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: .94rem; }
+.track-row span { color: var(--muted); }
+.progress { background: var(--bg-soft); border-radius: var(--radius-pill); height: 10px; overflow: hidden; margin: 18px 0; }
+.progress .bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: var(--radius-pill); transition: width .5s; }
+.track-panel .btn { margin-top: auto; }
+
+/* ---------- Favorites / tabs / pills ---------- */
+.tab-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+.pill { background: var(--surface); border: 1.5px solid var(--line); padding: 9px 18px; border-radius: var(--radius-pill); font-weight: 600; font-size: .9rem; color: var(--muted); transition: .2s; }
+.pill:hover { border-color: var(--primary); color: var(--primary-ink); }
+.pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* ---------- Notifications ---------- */
+.notif-list { display: flex; flex-direction: column; gap: 10px; }
+.notif {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; transition: .2s;
+}
+.notif:hover { box-shadow: var(--shadow-md); }
+.notif .n-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.notif h4 { font-size: .96rem; }
+.notif p { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+.notif .time { margin-left: auto; color: var(--muted); font-size: .78rem; white-space: nowrap; }
+
+/* ---------- Profile ---------- */
+.profile-card { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 22px; margin-bottom: 18px; flex-wrap: wrap; }
+.avatar { width: 64px; height: 64px; border-radius: 20px; background: linear-gradient(120deg, var(--primary), var(--accent)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.3rem; flex-shrink: 0; }
+.profile-card > div:nth-child(2) { flex: 1; min-width: 180px; }
+.menu-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.menu-item { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: .94rem; transition: .15s; cursor: pointer; }
+.menu-item:last-child { border-bottom: none; }
+.menu-item:hover { background: var(--bg-soft); }
+.menu-item em { margin-left: auto; font-style: normal; color: var(--muted); }
+.menu-item.danger { color: var(--red); }
+.menu-item.danger:hover { background: var(--red-soft); }
+
+/* ---------- Dashboard ---------- */
+.dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
+.dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 20px; }
+.stat span { color: var(--muted); font-size: .82rem; font-weight: 600; }
+.stat b { display: block; font-size: 1.6rem; font-weight: 800; margin-top: 4px; }
+.vehicles-list { display: flex; flex-direction: column; gap: 12px; }
+.veh-row {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.veh-row .vicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+.veh-row .vinfo { flex: 1; min-width: 180px; }
+.veh-row .vinfo h4 { font-size: 1rem; }
+.veh-row .vinfo p { color: var(--muted); font-size: .84rem; }
+.veh-row .vactions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sub-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sub-feats { display: flex; gap: 10px; flex-wrap: wrap; }
+.sub-feats span { font-size: .82rem; font-weight: 600; color: var(--primary-ink); background: var(--primary-soft); border-radius: var(--radius-pill); padding: 6px 12px; }
+.plan-hot { border: 2px solid var(--primary) !important; }
+
+/* ---------- Registration form ---------- */
+.reg-form { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; }
+.reg-form label { display: block; font-size: .86rem; font-weight: 700; }
+.verify-status { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 26px; margin-top: 22px; }
+.verify-status h3 { color: var(--primary-ink); margin-bottom: 6px; }
+.status-flow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0; font-weight: 600; font-size: .88rem; }
+.status-flow .active { color: var(--primary-ink); background: var(--primary-soft); padding: 7px 14px; border-radius: var(--radius-pill); }
+
+/* ---------- Business ---------- */
+.revenue-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.rev-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 22px; }
+.rev-card span { font-size: 1.7rem; }
+.rev-card h3 { font-size: 1.1rem; margin: 12px 0 6px; }
+.rev-card p { color: var(--muted); font-size: .9rem; }
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(15,30,23,.45); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; animation: fade .2s ease; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 520px; max-height: 86vh; overflow: auto; padding: 26px; box-shadow: var(--shadow-lg); position: relative; }
+.modal .close { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 50%; background: var(--bg-soft); font-size: 1.1rem; color: var(--muted); }
+.modal h3 { font-size: 1.35rem; margin-bottom: 8px; }
+.modal .muted { margin-bottom: 16px; }
+.modal .vtype { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 6px; }
+.modal .vtype .ic { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+.stop-list { display: flex; flex-direction: column; margin: 16px 0; }
+.stop { display: flex; gap: 12px; align-items: flex-start; position: relative; padding-bottom: 18px; }
+.stop:last-child { padding-bottom: 0; }
+.stop .rail { width: 14px; display: flex; flex-direction: column; align-items: center; align-self: stretch; }
+.stop .rail .dot { width: 13px; height: 13px; border-radius: 50%; border: 3px solid var(--primary); background: #fff; z-index: 1; }
+.stop .rail .line { width: 2px; flex: 1; background: var(--line); margin: 2px 0; }
+.stop:last-child .rail .line { display: none; }
+.stop .rail .dot.first { border-color: var(--accent); }
+.stop b { font-size: .94rem; }
+.stop span { color: var(--muted); font-size: .82rem; display: block; }
+.modal .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.modal .meta-row span { background: var(--bg-soft); border-radius: 8px; padding: 5px 10px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+ 
+/* ---------- Location picker ---------- */
+.location-display {
+  font-size: .98rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 4px 0;
+  transition: .2s;
+  min-height: 1.6rem;
+}
+.location-display[data-selected=""] {
+  color: var(--muted);
+  font-weight: 400;
+}
+.location-display:hover {
+  color: var(--primary-ink);
+}
+#locationModal .modal {
+  max-width: 480px;
+  max-height: 80vh;
+  padding: 20px;
+}
+#locationModal .modal h3 {
+  margin-bottom: 10px;
+}
+#locationSearch {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: .95rem;
+  margin-bottom: 16px;
+  background: var(--surface);
+}
+#locationSearch:focus {
+  border-color: var(--primary);
+}
+#locationList {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+#locationList .region-heading {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+#locationList .location-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: .15s;
+}
+#locationList .location-row:hover {
+  background: var(--bg-soft);
+}
+#locationList .location-row.selected {
+  background: var(--primary-soft);
+}
+#locationList .location-row .loc-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+#locationList .location-row .loc-name {
+  font-weight: 600;
+  font-size: .95rem;
+}
+#locationList .location-row .loc-sub {
+  font-size: .8rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+#locationList .empty-state {
+  padding: 30px 0;
+  text-align: center;
+  color: var(--muted);
+}
+.recent-section, .popular-section {
+  margin-bottom: 8px;
+}
+.recent-section .chip,
+.popular-section .chip {
+  background: var(--bg-soft);
+  border: none;
+  padding: 4px 12px;
+  font-size: .8rem;
+  margin: 2px 4px 2px 0;
+}
+.recent-section .chip:hover,
+.popular-section .chip:hover {
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+ 
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--ink); color: #fff; padding: 13px 22px; border-radius: var(--radius-pill);
+  font-weight: 600; font-size: .9rem; box-shadow: var(--shadow-lg);
+  opacity: 0; transition: .35s; z-index: 300; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+  .hero-inner { grid-template-columns: 1fr; }
+  .hero-art { order: -1; max-width: 520px; margin: 0 auto; }
+  .grid.cats { grid-template-columns: repeat(3, 1fr); }
+  .track-wrap { grid-template-columns: 1fr; }
+  .track-panel { border-left: none; border-top: 1px solid var(--line); }
+  .auth-wrap { grid-template-columns: 1fr; }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .nav-actions { display: none; }
+  .hamburger { display: flex; }
+  .links {
+    position: fixed; top: 62px; left: 0; right: 0; flex-direction: column;
+    background: var(--surface); padding: 12px 16px; gap: 2px;
+    border-bottom: 1px solid var(--line); box-shadow: var(--shadow-md);
+    display: none;
+  }
+  .links.open { display: flex; }
+  .links a { padding: 13px 16px; font-size: 1rem; }
+  .links a.mobile-only { display: flex; }
+}
+.links a.mobile-only { display: none; }
+.close-mobile {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  padding: 8px 0;
+  color: var(--muted);
+  width: 100%;
+  text-align: right;
+  cursor: pointer;
+}
+@media (max-width: 980px) {
+  .close-mobile { display: block; }
+  .links a.mobile-only { display: flex; }
+}
+@media (max-width: 560px) {
+  .grid.cats { grid-template-columns: repeat(2, 1fr); }
+  .search-box { flex-wrap: wrap; }
+  .search-box .search-btn { width: 100%; }
+  .cta-banner { flex-direction: column; align-items: flex-start; }
+  .hero-inner { padding: 36px 16px 32px; }
+  .container { padding: 32px 16px; }
+  .filter-bar select { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+}
+  </style>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2322C55E'/%3E%3Cpath d='M16 30 L48 30 L36 20 M16 30 L48 30 L36 40' stroke='white' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Bus -->
+      <symbol id="icon-bus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="8" width="20" height="10" rx="2"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="18" r="2.5"/><path d="M2 13h20"/><path d="M6 8V5h12v3"/>
+      </symbol>
+      <!-- E-Jeep -->
+      <symbol id="icon-ejeep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="8" cy="18" r="2.5"/><circle cx="16" cy="18" r="2.5"/><path d="M3 12h18"/><path d="M6 8V5h12v3"/><path d="M9 3h6v2H9z"/>
+      </symbol>
+      <!-- Jeepney -->
+      <symbol id="icon-jeepney" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="8" rx="2"/><circle cx="8" cy="18" r="2.5"/><circle cx="16" cy="18" r="2.5"/><path d="M4 13h16"/><path d="M7 7h10v3H7z"/><path d="M5 5l1-2h12l1 2"/>
+      </symbol>
+      <!-- UV Express -->
+      <symbol id="icon-uv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="9" width="18" height="10" rx="3"/><circle cx="8" cy="19" r="2.5"/><circle cx="16" cy="19" r="2.5"/><path d="M3 13h18"/><path d="M8 9V6h8v3"/>
+      </symbol>
+      <!-- Tricycle -->
+      <symbol id="icon-tricycle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="7" cy="18" r="3"/><circle cx="17" cy="18" r="2.5"/><path d="M7 15V4h4l3 11"/><path d="M4 4h7v2H4z"/><path d="M14 15h3l2-4h-5"/>
+      </symbol>
+      <!-- Motorcycle -->
+      <symbol id="icon-motorcycle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="18" r="3.5"/><circle cx="18" cy="18" r="3.5"/><path d="M18 14.5V10l-4-3h-3"/><path d="M11 7v4l-3 3"/><path d="M14 10l3 0"/><path d="M7 15l-2-2 2-2"/>
+      </symbol>
+      <!-- Star (outline) -->
+      <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </symbol>
+      <!-- Star filled -->
+      <symbol id="icon-star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </symbol>
+      <!-- Bell -->
+      <symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </symbol>
+      <!-- Settings -->
+      <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </symbol>
+      <!-- Help -->
+      <symbol id="icon-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </symbol>
+      <!-- Partner -->
+      <symbol id="icon-partner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+      </symbol>
+      <!-- Info -->
+      <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+      </symbol>
+      <!-- Logout -->
+      <symbol id="icon-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </symbol>
+      <!-- Clock -->
+      <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </symbol>
+      <!-- Ruler (distance) -->
+      <symbol id="icon-ruler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </symbol>
+      <!-- Coin (fare) -->
+      <symbol id="icon-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M8 8h8M8 12h8M8 16h5"/>
+      </symbol>
+      <!-- Seat -->
+      <symbol id="icon-seat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 8v13M12 8v13M18 8v13M4 5a2 2 0 012-2h12a2 2 0 012 2v2H4V5z"/>
+      </symbol>
+      <!-- Route (compass) -->
+      <symbol id="icon-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M8 8L16 16"/><path d="M16 8L8 16"/>
+      </symbol>
+      <!-- Location -->
+      <symbol id="icon-location" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22c-2 0-8-5.5-8-10a8 8 0 0116 0c0 4.5-6 10-8 10z"/><circle cx="12" cy="12" r="3"/>
+      </symbol>
+      <!-- Check -->
+      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6L9 17l-5-5"/>
+      </symbol>
+      <!-- Document (for registration) -->
+      <symbol id="icon-document" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+      </symbol>
+      <!-- Megaphone (for announcements) -->
+      <symbol id="icon-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.5 18.5c-1.5 1.5-4 1.5-4 0s2.5-1.5 4 0z"/>
+      </symbol>
+      <!-- Credit card -->
+      <symbol id="icon-credit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+      </symbol>
+      <!-- Arrow right -->
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+      </symbol>
+      <!-- Swap arrows -->
+      <symbol id="icon-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="17 1 21 5 17 9"/>
+        <polyline points="7 23 3 19 7 15"/>
+        <line x1="21" y1="5" x2="3" y2="5"/>
+        <line x1="3" y1="19" x2="21" y2="19"/>
+      </symbol>
+      <!-- Close -->
+      <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </symbol>
+      <!-- Arrow left -->
+      <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </symbol>
+      <!-- Arrow right -->
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+      </symbol>
+      <!-- Plus -->
+      <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </symbol>
+      <!-- Minus -->
+      <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </symbol>
+      <!-- Location filled -->
+      <symbol id="icon-location-filled" viewBox="0 0 24 24" fill="currentColor" stroke="none" stroke-width="0">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </symbol>
+      <!-- Document -->
+      <symbol id="icon-document" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </symbol>
+      <!-- Megaphone -->
+      <symbol id="icon-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.5 18.5c-1.5 1.5-4 1.5-4 0s2.5-1.5 4 0z"/>
+      </symbol>
+      <!-- Credit card -->
+      <symbol id="icon-credit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+      </symbol>
+      <!-- User/Profile -->
+      <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </symbol>
+      <!-- Shield (Safety) -->
+      <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ============ NAVIGATION ============ -->
+  <header class="nav" id="nav" style="display:none">
+    <div class="nav-inner">
+      <a class="logo" data-nav="home">
+        <svg viewBox="0 0 32 32" class="logo-mark" aria-hidden="true"><rect width="32" height="32" rx="9" fill="url(#lg)"/><path d="M8 16 L24 16 L18 10 M8 16 L24 16 L18 22" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#22C55E"/><stop offset="1" stop-color="#0EA5E9"/></linearGradient></defs></svg>
+        <span>SAccess</span>
+      </a>
+      <nav class="links" id="navLinks"></nav>
+      <div class="nav-actions">
+        <a class="btn btn-ghost btn-sm" id="navPartner" data-nav="business">For Operators</a>
+        <button class="btn btn-primary btn-sm" id="navLogout">Logout</button>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="app">
+
+    <!-- ============ AUTH: LOGIN / SIGNUP ============ -->
+    <section class="page active" id="page-auth">
+      <div class="auth-wrap">
+        <div class="auth-brand">
+          <div class="logo auth-logo">
+            <svg viewBox="0 0 32 32" class="logo-mark" aria-hidden="true"><rect width="32" height="32" rx="9" fill="url(#lg)"/><path d="M8 16 L24 16 L18 10 M8 16 L24 16 L18 22" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#22C55E"/><stop offset="1" stop-color="#0EA5E9"/></linearGradient></defs></svg>
+            <span>SAccess</span>
+          </div>
+          <h1>Safe rides.<br>Comfortable journeys.</h1>
+          <p class="muted">Find reliable bus and modern jeep routes with clear fares, route information, and easy ride tracking in one place.</p>
+        </div>
+
+        <div class="auth-card">
+          <div class="tab-row auth-tabs">
+            <button class="pill active" data-authtab="login">Log In</button>
+            <button class="pill" data-authtab="signup">Sign Up</button>
+          </div>
+
+          <form id="loginForm" class="auth-form">
+            <h2>Welcome back</h2>
+            <p class="muted">Log in to continue your journey.</p>
+            <label>Email or Mobile Number<input id="loginId" type="text" placeholder="you@email.com or 09xx-xxx-xxxx" required /></label>
+            <label>Password<input id="loginPass" type="password" placeholder="••••••••" required /></label>
+            <button type="submit" class="btn btn-primary btn-block">Log In</button>
+            <p class="switch">No account? <a data-authtab="signup">Sign Up</a></p>
+          </form>
+
+          <form id="signupForm" class="auth-form" style="display:none">
+            <h2>Create your account</h2>
+            <p class="muted">Join SAccess as a passenger or driver/operator.</p>
+            <label>Full Name<input id="suName" type="text" placeholder="Juan Miguel Santos" required /></label>
+            <label>Mobile Number<input id="suMobile" type="tel" placeholder="0917 123 4567" required /></label>
+            <label>Email Address<input id="suEmail" type="email" placeholder="you@email.com" required /></label>
+            <label>Password<input id="suPass" type="password" placeholder="Min 6 characters" required /></label>
+            <label>Confirm Password<input id="suPass2" type="password" placeholder="Re-enter password" required /></label>
+            <label>Account Type
+              <select id="suType" required>
+                <option value="passenger">Passenger</option>
+                <option value="driver">Driver / Operator</option>
+              </select>
+            </label>
+            <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+            <p class="switch">Already have an account? <a data-authtab="login">Log In</a></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ HOME ============ -->
+    <section class="page" id="page-home">
+      <div class="hero">
+        <div class="hero-inner">
+          <div class="hero-text">
+            <span class="eyebrow">SAccess</span>
+            <h1>Safe rides.<br><span class="grad">Comfortable journeys.</span></h1>
+            <p>Find reliable bus and modern jeep routes with clear fares, route information, and easy ride tracking in one place.</p>
+            <div class="search-box">
+              <div class="field" data-location-field="from">
+                <span class="dot from"></span>
+                <div>
+                  <label>From</label>
+                  <div class="location-display" id="homeFromDisplay" data-selected="">Select starting location</div>
+                </div>
+              </div>
+              <button class="swap" id="homeSwap" aria-label="Swap" title="Swap"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-swap"/></svg></button>
+              <div class="field" data-location-field="to">
+                <span class="dot to"></span>
+                <div>
+                  <label>To</label>
+                  <div class="location-display" id="homeToDisplay" data-selected="">Where to?</div>
+                </div>
+              </div>
+              <button class="btn btn-primary search-btn" id="homeSearch">Search</button>
+            </div>
+
+          </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+
+
+        <div class="grid cats" id="catGrid"></div>
+
+        <div class="section-head">
+          <h2>Popular routes</h2>
+          <a class="link" data-nav="routes">Explore routes →</a>
+        </div>
+        <div class="grid cards" id="popularRoutes"></div>
+
+        <div class="cta-banner">
+          <div>
+            <h2>Real-time tracking, right from your pocket</h2>
+            <p>Follow your vehicle on the map — simulated live location for every registered route.</p>
+          </div>
+          <a class="btn btn-light" data-nav="track">Open live map</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SEARCH ============ -->
+    <section class="page" id="page-search">
+      <div class="container">
+        <h2 class="page-title">Find a ride</h2>
+        <div class="search-panel">
+          <div class="search-box col">
+            <div class="field" data-location-field="from"><span class="dot from"></span><div><label>From</label><div class="location-display" id="searchFromDisplay" data-selected="">Select starting location</div></div></div>
+            <div class="field" data-location-field="to"><span class="dot to"></span><div><label>To</label><div class="location-display" id="searchToDisplay" data-selected="">Select destination</div></div></div>
+            <button class="btn btn-primary" id="searchBtn">Search rides</button>
+          </div>
+          <div class="suggested" id="suggested">
+            <h4>Suggested locations</h4>
+            <span class="chip">Capas</span><span class="chip">Angeles City</span><span class="chip">Clark</span><span class="chip">San Fernando</span><span class="chip">Manila</span>
+          </div>
+        </div>
+
+        <div class="recent" id="recent">
+          <h4>Recent searches</h4>
+          <div class="recent-list" id="recentList"></div>
+        </div>
+
+        <div class="filter-bar" id="filterBar" style="display:none">
+          <button class="pill active" data-filter="all">All</button>
+          <button class="pill" data-filter="fare">Lowest Fare</button>
+          <button class="pill" data-filter="fast">Fastest</button>
+          <button class="pill" data-filter="near">Nearest</button>
+          <select id="typeFilter">
+            <option value="all">All types</option>
+            <option value="bus">Bus</option>
+            <option value="jeepney">Modern Jeep</option>
+          </select>
+        </div>
+
+        <h4 class="results-heading" id="resultsHeading">Available rides</h4>
+        <div class="grid cards" id="searchResults"></div>
+      </div>
+    </section>
+
+    <!-- ============ TRANSPORT ============ -->
+    <section class="page" id="page-transport">
+      <div class="container">
+        <h2 class="page-title">Transportation options</h2>
+        <p class="page-sub">Compare vehicle types, fares and availability across all routes.</p>
+        <div class="grid cards" id="transportCards"></div>
+      </div>
+    </section>
+
+    <!-- ============ ROUTES ============ -->
+    <section class="page" id="page-routes">
+      <div class="container">
+        <h2 class="page-title">Routes</h2>
+        <p class="page-sub">Popular trips across Central Luzon and Metro Manila.</p>
+        <div class="grid cards" id="routeList"></div>
+      </div>
+    </section>
+
+    <!-- ============ MAP / TRACK ============ -->
+    <section class="page" id="page-track">
+      <div class="track-wrap">
+        <div class="map-stage" id="trackMap">
+          <div id="trackMapContainer" style="height:100%;width:100%;"></div>
+          <div class="map-legend"><span>● Simulated Live Location</span></div>
+          <button class="map-zoom" data-zoom="in"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-plus"/></svg></button>
+          <button class="map-zoom" data-zoom="out"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-minus"/></svg></button>
+        </div>
+        <div class="track-panel">
+          <h3 id="trackTitle">Select a route</h3>
+          <p class="muted" id="trackRoute">Tap a vehicle or route to track it</p>
+          <div class="eta-big"><span id="trackEta">—</span></div>
+          <p class="muted" id="trackEtaLabel">Estimated arrival</p>
+          <div class="track-row"><span>Next stop</span><b id="trackNext">—</b></div>
+          <div class="track-row"><span>Distance</span><b id="trackDist">—</b></div>
+          <div class="track-row"><span>Fare</span><b id="trackFare">—</b></div>
+          <div class="track-row"><span>Capacity</span><b id="trackCap">—</b></div>
+          <div class="progress"><div class="bar" id="trackBar" style="width:0%"></div></div>
+          <button class="btn btn-primary btn-block" id="trackVehicleBtn">View vehicle</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAVORITES ============ -->
+    <section class="page" id="page-favorites">
+      <div class="container">
+        <h2 class="page-title">Favorites</h2>
+        <div class="tab-row">
+          <button class="pill active" data-favtab="routes">Saved routes</button>
+          <button class="pill" data-favtab="dest">Destinations</button>
+          <button class="pill" data-favtab="transport">Transport</button>
+        </div>
+        <div class="grid cards" id="favoritesList"></div>
+        <p class="muted" id="favEmpty" style="display:none;margin-top:20px">No favorites yet. Tap "Add to Favorites" on any route.</p>
+      </div>
+    </section>
+
+    <!-- ============ NOTIFICATIONS ============ -->
+    <section class="page" id="page-notifications">
+      <div class="container narrow">
+        <h2 class="page-title">Notifications</h2>
+        <div class="notif-list" id="notifList"></div>
+      </div>
+    </section>
+
+    <!-- ============ PROFILE ============ -->
+    <section class="page" id="page-profile">
+      <div class="container narrow">
+        <div class="profile-card">
+          <div class="avatar" id="profAvatar">JM</div>
+          <div>
+            <h3 id="profName">Juan Miguel Santos</h3>
+            <p class="muted" id="profMeta">passenger · juan@email.com · 0917 123 4567</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="editProfileBtn">Edit Profile</button>
+        </div>
+        <div class="menu-list">
+          <a class="menu-item" data-nav="favorites"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-star"/></svg> Saved routes <em>→</em></a>
+          <a class="menu-item" data-nav="notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-bell"/></svg> Notifications <em>→</em></a>
+          <a class="menu-item" id="settingsBtn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-settings"/></svg> Settings <em>→</em></a>
+          <a class="menu-item" id="helpBtn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-help"/></svg> Help center <em>→</em></a>
+          <a class="menu-item" data-nav="business"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-partner"/></svg> Partner with SAccess <em>→</em></a>
+          <a class="menu-item" id="aboutBtn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-info"/></svg> About SAccess <em>→</em></a>
+          <a class="menu-item danger" id="logoutBtn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-logout"/></svg> Logout <em>→</em></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DRIVER DASHBOARD ============ -->
+    <section class="page" id="page-dashboard">
+      <div class="container">
+        <div class="dash-head">
+          <div>
+            <span class="eyebrow">Driver / Operator</span>
+            <h2 class="page-title">Dashboard</h2>
+          </div>
+          <div>
+            <button class="btn btn-primary" id="regVehicleBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-plus"/></svg> Register Vehicle</button>
+          </div>
+        </div>
+
+        <div class="dash-stats">
+          <div class="stat"><span>Registered vehicles</span><b id="statVehicles">0</b></div>
+          <div class="stat"><span>Active / On trip</span><b id="statActive">0</b></div>
+          <div class="stat"><span>Mock earnings</span><b id="statEarnings">₱0</b></div>
+          <div class="stat"><span>Total trips</span><b id="statTrips">0</b></div>
+        </div>
+
+        <div class="section-head"><h2>My vehicles</h2></div>
+        <div id="vehiclesList" class="vehicles-list"></div>
+        <p class="muted" id="vehiclesEmpty">No registered vehicles yet. Register your first vehicle to start.</p>
+
+        <div class="section-head"><h2>Subscription plan</h2></div>
+        <div class="sub-card">
+          <div><h3>Operator Pro</h3><p class="muted">₱299 / month per vehicle</p></div>
+          <div class="sub-feats"><span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-check"/></svg> Live tracking</span><span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-check"/></svg> Occupancy updates</span><span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-check"/></svg> Trip history</span><span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-check"/></svg> Featured listing</span></div>
+          <button class="btn btn-ghost btn-sm" data-nav="business">View plans</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ REGISTER VEHICLE ============ -->
+    <section class="page" id="page-register">
+      <div class="container narrow">
+        <a class="link back" data-nav="dashboard">← Back to dashboard</a>
+        <h2 class="page-title">Register Your Vehicle</h2>
+        <p class="page-sub">Submit your vehicle for verification. It will go through Pending → Verified → Active.</p>
+        <form id="regForm" class="reg-form">
+          <label>Driver / Operator Name<input id="rvName" type="text" required /></label>
+          <label>Mobile Number<input id="rvMobile" type="tel" required /></label>
+          <label>Vehicle Type
+            <select id="rvType" required>
+              <option value="">— Select —</option>
+              <option>Bus</option><option>Jeepney</option>
+            </select>
+          </label>
+          <label>Vehicle Number / Plate Number<input id="rvPlate" type="text" placeholder="B-204" required /></label>
+          <label>Route<input id="rvRoute" type="text" placeholder="Tarlac City → Angeles City" required /></label>
+          <label>Origin<input id="rvOrigin" type="text" required /></label>
+          <label>Destination<input id="rvDest" type="text" required /></label>
+          <label>Operating Schedule<input id="rvSched" type="text" placeholder="5:00 AM – 9:00 PM" required /></label>
+          <label>Capacity<input id="rvCap" type="number" min="1" required /></label>
+          <button type="submit" class="btn btn-primary btn-block">Submit Vehicle Registration</button>
+        </form>
+        <div class="verify-status" id="verifyStatus" style="display:none">
+          <h3><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-check"/></svg> Pending Verification</h3>
+          <p class="muted">Your vehicle has been submitted and is now being reviewed.</p>
+          <div class="status-flow">
+            <span class="active">Pending Verification</span><span>→</span><span>Verified</span><span>→</span><span>Active</span>
+          </div>
+          <button class="btn btn-primary btn-block" id="verifyContinue" data-nav="dashboard">Go to Dashboard</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BUSINESS ============ -->
+    <section class="page" id="page-business">
+      <div class="container">
+        <h2 class="page-title">Partner with SAccess</h2>
+        <p class="page-sub">Affordable for passengers + sustainable for operators + profitable for SAccess.</p>
+
+        <div class="revenue-grid">
+          <div class="rev-card"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-document"/></svg><h3>Operator Subscription</h3><p>Operators pay a small monthly fee per registered vehicle for tracking, verification and listing.</p></div>
+          <div class="rev-card"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-megaphone"/></svg><h3>Featured Listings</h3><p>Operators can pay to promote their vehicle or route to reach more passengers.</p></div>
+          <div class="rev-card"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-credit"/></svg><h3>Future Service Fees</h3><p>SAccess may earn a small service fee from future booking services.</p></div>
+          <div class="rev-card"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-partner"/></svg><h3>Business Partnerships</h3><p>Partner with cooperatives, terminals, local businesses and transport organizations.</p></div>
+        </div>
+
+        <div class="cta-banner">
+          <div>
+            <h2>Reach more passengers today</h2>
+            <p>Register as a driver/operator and list your vehicle on SAccess.</p>
+          </div>
+          <a class="btn btn-light" data-nav="register">Register a vehicle</a>
+        </div>
+
+        <div class="section-head"><h2>Subscription plans</h2></div>
+        <div class="grid cards">
+          <div class="card"><h3>Free</h3><p class="route">₱0 / month</p><p class="muted">Basic listing · 1 vehicle</p><button class="btn btn-ghost btn-sm" id="subscribeFree">Start Free</button></div>
+          <div class="card plan-hot"><h3>Operator Pro</h3><p class="route">₱99 / month per vehicle</p><p class="muted">Route tracking · trip history · vehicle status</p><button class="btn btn-primary btn-sm" id="subscribePro">Choose Pro</button></div>
+          <div class="card"><h3>Fleet</h3><p class="route">₱299 / month</p><p class="muted">Up to 5 vehicles · route tracking · trip monitoring</p><button class="btn btn-ghost btn-sm" id="subscribeFleet">Choose Fleet</button></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ MODALS ============ -->
+  <div class="modal-overlay" id="routeModal"><div class="modal" id="routeModalCard"></div></div>
+  <div class="modal-overlay" id="vehicleModal"><div class="modal" id="vehicleModalCard"></div></div>
+  <div class="modal-overlay" id="genericModal"><div class="modal" id="genericModalCard"></div></div>
+  <div class="modal-overlay" id="locationModal">
+    <div class="modal" id="locationModalCard">
+      <button class="close" id="locationModalClose">✕</button>
+      <h3 id="locationModalTitle">Select Location</h3>
+      <input type="text" id="locationSearch" placeholder="Search location..." />
+      <div id="locationList"></div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="subscriptionModal">
+    <div class="modal" id="subscriptionModalCard">
+      <button class="close" onclick="closeModals()">✕</button>
+      <div id="subscriptionContent"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+/* ============================================================
+   SAccess — Philippine Transportation Prototype
+   Vanilla JS: auth, routes, search, map simulation, favorites,
+   vehicle registration, driver dashboard, business model
+   ============================================================ */
+
+const $ = (s, c = document) => c.querySelector(s);
+const $$ = (s, c = document) => [...c.querySelectorAll(s)];
+
+/* ---------- Storage helpers ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+  del(k) { localStorage.removeItem(k); },
+};
+
+/* ---------- Data ---------- */
+const ICONS = {
+  bus: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="10" rx="2"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="18" r="2.5"/><path d="M2 13h20"/><path d="M6 8V5h12v3"/></svg>`,
+  jeepney: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="8" rx="2"/><circle cx="8" cy="18" r="2.5"/><circle cx="16" cy="18" r="2.5"/><path d="M4 13h16"/><path d="M7 7h10v3H7z"/><path d="M5 5l1-2h12l1 2"/></svg>`,
+  star: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`,
+  bell: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`,
+  settings: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`,
+  help: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  partner: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>`,
+  info: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+  logout: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  clock: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  ruler: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`,
+  coin: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`,
+  seat: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v13M12 8v13M18 8v13M4 5a2 2 0 012-2h12a2 2 0 012 2v2H4V5z"/></svg>`,
+  route: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 8L16 16"/><path d="M16 8L8 16"/></svg>`,
+  location: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c-2 0-8-5.5-8-10a8 8 0 0116 0c0 4.5-6 10-8 10z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`,
+};
+const LOCATIONS = [
+  { name: "Manila", province: "Metro Manila", region: "National Capital Region", lat: 14.5995, lng: 120.9842 },
+  { name: "Quezon City", province: "Metro Manila", region: "National Capital Region", lat: 14.6760, lng: 121.0437 },
+  { name: "Makati", province: "Metro Manila", region: "National Capital Region", lat: 14.5547, lng: 121.0244 },
+  { name: "Pasig", province: "Metro Manila", region: "National Capital Region", lat: 14.5764, lng: 121.0851 },
+  { name: "Taguig", province: "Metro Manila", region: "National Capital Region", lat: 14.5243, lng: 121.0792 },
+  { name: "Pasay", province: "Metro Manila", region: "National Capital Region", lat: 14.5378, lng: 121.0014 },
+  { name: "Caloocan", province: "Metro Manila", region: "National Capital Region", lat: 14.6496, lng: 121.0324 },
+  { name: "Parañaque", province: "Metro Manila", region: "National Capital Region", lat: 14.4676, lng: 121.0179 },
+  { name: "Las Piñas", province: "Metro Manila", region: "National Capital Region", lat: 14.4506, lng: 120.9827 },
+  { name: "Muntinlupa", province: "Metro Manila", region: "National Capital Region", lat: 14.4049, lng: 121.0450 },
+  { name: "Marikina", province: "Metro Manila", region: "National Capital Region", lat: 14.6207, lng: 121.0911 },
+  { name: "Mandaluyong", province: "Metro Manila", region: "National Capital Region", lat: 14.5797, lng: 121.0329 },
+  { name: "Malabon", province: "Metro Manila", region: "National Capital Region", lat: 14.6583, lng: 120.9647 },
+  { name: "Navotas", province: "Metro Manila", region: "National Capital Region", lat: 14.6667, lng: 120.9500 },
+  { name: "Valenzuela", province: "Metro Manila", region: "National Capital Region", lat: 14.7000, lng: 120.9833 },
+  { name: "San Juan", province: "Metro Manila", region: "National Capital Region", lat: 14.6040, lng: 121.0292 },
+  { name: "Pateros", province: "Metro Manila", region: "National Capital Region", lat: 14.5465, lng: 121.0701 },
+  { name: "Tarlac City", province: "Tarlac", region: "Central Luzon", lat: 15.4859, lng: 120.5897 },
+  { name: "Capas", province: "Tarlac", region: "Central Luzon", lat: 15.3289, lng: 120.5948 },
+  { name: "Angeles City", province: "Pampanga", region: "Central Luzon", lat: 15.1392, lng: 120.5897 },
+  { name: "San Fernando", province: "Pampanga", region: "Central Luzon", lat: 15.0333, lng: 120.6833 },
+  { name: "Clark", province: "Pampanga", region: "Central Luzon", lat: 15.1667, lng: 120.5667 },
+  { name: "Mabalacat", province: "Pampanga", region: "Central Luzon", lat: 15.1667, lng: 120.5667 },
+  { name: "Cabanatuan", province: "Nueva Ecija", region: "Central Luzon", lat: 15.4889, lng: 120.9678 },
+  { name: "Malolos", province: "Bulacan", region: "Central Luzon", lat: 14.8436, lng: 120.8106 },
+  { name: "Meycauayan", province: "Bulacan", region: "Central Luzon", lat: 14.7333, lng: 120.9667 },
+  { name: "Olongapo", province: "Zambales", region: "Central Luzon", lat: 14.8333, lng: 120.2833 },
+  { name: "Baliwag", province: "Bulacan", region: "Central Luzon", lat: 14.9500, lng: 120.9000 },
+  { name: "San Jose del Monte", province: "Bulacan", region: "Central Luzon", lat: 14.8167, lng: 121.0500 },
+  { name: "Antipolo", province: "Rizal", region: "CALABARZON", lat: 14.5864, lng: 121.1772 },
+  { name: "Batangas City", province: "Batangas", region: "CALABARZON", lat: 13.7565, lng: 121.0583 },
+  { name: "Lipa", province: "Batangas", region: "CALABARZON", lat: 13.9411, lng: 121.1686 },
+  { name: "Lucena", province: "Quezon", region: "CALABARZON", lat: 13.9333, lng: 121.6167 },
+  { name: "Calamba", province: "Laguna", region: "CALABARZON", lat: 14.2167, lng: 121.1667 },
+  { name: "Santa Rosa", province: "Laguna", region: "CALABARZON", lat: 14.3167, lng: 121.1167 },
+  { name: "Biñan", province: "Laguna", region: "CALABARZON", lat: 14.3333, lng: 121.0833 },
+  { name: "Cabuyao", province: "Laguna", region: "CALABARZON", lat: 14.2833, lng: 121.1333 },
+  { name: "San Pablo", province: "Laguna", region: "CALABARZON", lat: 14.0667, lng: 121.3333 },
+  { name: "Dasmariñas", province: "Cavite", region: "CALABARZON", lat: 14.3333, lng: 120.9333 },
+  { name: "Imus", province: "Cavite", region: "CALABARZON", lat: 14.4333, lng: 120.9333 },
+  { name: "Bacoor", province: "Cavite", region: "CALABARZON", lat: 14.4667, lng: 120.9500 },
+  { name: "Tagaytay", province: "Cavite", region: "CALABARZON", lat: 14.1167, lng: 120.9667 },
+  { name: "Naga", province: "Camarines Sur", region: "Bicol", lat: 13.6192, lng: 123.1814 },
+  { name: "Legazpi", province: "Albay", region: "Bicol", lat: 13.1489, lng: 123.7486 },
+  { name: "Sorsogon", province: "Sorsogon", region: "Bicol", lat: 12.9739, lng: 124.0058 },
+  { name: "Tabaco", province: "Albay", region: "Bicol", lat: 13.3583, lng: 123.7333 },
+  { name: "Ligao", province: "Albay", region: "Bicol", lat: 13.2167, lng: 123.5167 },
+  { name: "Baguio", province: "Benguet", region: "Cordillera", lat: 16.4023, lng: 120.5960 },
+  { name: "Dagupan", province: "Pangasinan", region: "Ilocos", lat: 16.0431, lng: 120.3364 },
+  { name: "Laoag", province: "Ilocos Norte", region: "Ilocos", lat: 18.1989, lng: 120.5936 },
+  { name: "Vigan", province: "Ilocos Sur", region: "Ilocos", lat: 17.5747, lng: 120.3870 },
+  { name: "Tuguegarao", province: "Cagayan", region: "Cagayan Valley", lat: 17.6133, lng: 121.7269 },
+  { name: "Santiago City", province: "Isabela", region: "Cagayan Valley", lat: 16.6883, lng: 121.5486 },
+  { name: "Cebu City", province: "Cebu", region: "Visayas", lat: 10.3157, lng: 123.8854 },
+  { name: "Mandaue", province: "Cebu", region: "Visayas", lat: 10.3236, lng: 123.9222 },
+  { name: "Lapu-Lapu", province: "Cebu", region: "Visayas", lat: 10.3100, lng: 123.9567 },
+  { name: "Talisay", province: "Cebu", region: "Visayas", lat: 10.2447, lng: 123.8494 },
+  { name: "Toledo", province: "Cebu", region: "Visayas", lat: 10.3772, lng: 123.6386 },
+  { name: "Bacolod", province: "Negros Occidental", region: "Visayas", lat: 10.6407, lng: 122.9682 },
+  { name: "Iloilo City", province: "Iloilo", region: "Visayas", lat: 10.7202, lng: 122.5621 },
+  { name: "Roxas City", province: "Capiz", region: "Visayas", lat: 11.5853, lng: 122.7511 },
+  { name: "Dumaguete", province: "Negros Oriental", region: "Visayas", lat: 9.3100, lng: 123.3081 },
+  { name: "Tagbilaran", province: "Bohol", region: "Visayas", lat: 9.6394, lng: 123.8550 },
+  { name: "Tacloban", province: "Leyte", region: "Visayas", lat: 11.2444, lng: 125.0039 },
+  { name: "Ormoc", province: "Leyte", region: "Visayas", lat: 11.0056, lng: 124.6078 },
+  { name: "Davao City", province: "Davao del Sur", region: "Mindanao", lat: 7.1907, lng: 125.4553 },
+  { name: "General Santos", province: "South Cotabato", region: "Mindanao", lat: 6.1167, lng: 125.1667 },
+  { name: "Cagayan de Oro", province: "Misamis Oriental", region: "Mindanao", lat: 8.4817, lng: 124.6474 },
+  { name: "Iligan", province: "Lanao del Norte", region: "Mindanao", lat: 8.2333, lng: 124.2500 },
+  { name: "Zamboanga City", province: "Zamboanga del Sur", region: "Mindanao", lat: 6.9044, lng: 122.0764 },
+  { name: "Butuan", province: "Agusan del Norte", region: "Mindanao", lat: 8.9533, lng: 125.5431 },
+  { name: "Tagum", province: "Davao del Norte", region: "Mindanao", lat: 7.4478, lng: 125.8078 },
+  { name: "Panabo", province: "Davao del Norte", region: "Mindanao", lat: 7.3333, lng: 125.6667 },
+  { name: "Surigao City", province: "Surigao del Norte", region: "Mindanao", lat: 9.7833, lng: 125.5000 },
+  { name: "Cotabato City", province: "Maguindanao", region: "Mindanao", lat: 7.2167, lng: 124.2500 },
+  { name: "Pagadian", province: "Zamboanga del Sur", region: "Mindanao", lat: 7.8333, lng: 123.4333 },
+  { name: "Dipolog", province: "Zamboanga del Norte", region: "Mindanao", lat: 8.5833, lng: 123.3333 },
+];
+const POPULAR_LOCATIONS = ["Manila", "Quezon City", "Makati", "Baguio", "Angeles City", "Clark", "Cebu City", "Davao City"];
+
+// Helper: deterministic hash for consistent distances
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getDistance(fromName, toName) {
+  if (!fromName || !toName) return 0;
+  const fromLoc = LOCATIONS.find(l => l.name === fromName);
+  const toLoc = LOCATIONS.find(l => l.name === toName);
+  if (!fromLoc || !toLoc) return 20;
+  // Base distance on region: same region ~15-30, adjacent ~40-80, far ~100-200
+  const regions = {
+    "National Capital Region": 0,
+    "Central Luzon": 1,
+    "CALABARZON": 2,
+    "Bicol": 3,
+    "Cordillera": 4,
+    "Ilocos": 5,
+    "Cagayan Valley": 6,
+    "Visayas": 7,
+    "Mindanao": 8,
+  };
+  const r1 = regions[fromLoc.region] ?? 9;
+  const r2 = regions[toLoc.region] ?? 9;
+  const diff = Math.abs(r1 - r2);
+  let base = 0;
+  if (diff === 0) base = 15 + hashString(fromName + toName) % 20; // 15-35
+  else if (diff === 1) base = 40 + hashString(fromName + toName) % 30; // 40-70
+  else if (diff <= 3) base = 80 + hashString(fromName + toName) % 50; // 80-130
+  else base = 150 + hashString(fromName + toName) % 80; // 150-230
+  // Ensure minimum 5 km
+  return Math.max(5, base);
+}
+
+function getTravelTime(distance, type) {
+  const avgSpeed = type === 'bus' ? 40 : 30; // km/h
+  const hours = distance / avgSpeed;
+  const minutes = Math.round(hours * 60);
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+}
+
+function calculateFare(distance, type) {
+  if (type === 'bus') {
+    const base = 20;
+    const rate = 2.5;
+    if (distance <= 5) return base;
+    return Math.ceil(base + (distance - 5) * rate);
+  } else { // jeepney
+    const base = 15;
+    const rate = 2.2;
+    if (distance <= 4) return base;
+    return Math.ceil(base + (distance - 4) * rate);
+  }
+}
+
+function generateStops(fromName, toName) {
+  const stopNames = ["Barangay", "Intersection", "Plaza", "Market", "Terminal", "Hospital", "School", "Church", "Park", "Mall"];
+  const count = 3 + hashString(fromName + toName) % 3; // 3-5 stops
+  const stops = [];
+  for (let i = 0; i < count; i++) {
+    const idx = hashString(fromName + toName + i) % stopNames.length;
+    stops.push(stopNames[idx] + " " + (i+1));
+  }
+  return stops;
+}
+
+function getLocationCoords(name) {
+  const loc = LOCATIONS.find(l => l.name === name);
+  if (!loc) return {lat: 14.5995, lng: 120.9842}; // default Manila
+  return {lat: loc.lat, lng: loc.lng};
+}
+
+function generateSchedule() {
+  const start = 4 + hashString(Date.now() + "start") % 3; // 4-6 AM
+  const end = 19 + hashString(Date.now() + "end") % 4; // 7-10 PM
+  return `${start}:00 AM – ${end}:00 PM`;
+}
+
+function generateRouteOptions(fromName, toName) {
+  const dist = getDistance(fromName, toName);
+  const busFare = calculateFare(dist, 'bus');
+  const jeepFare = calculateFare(dist, 'jeepney');
+  const busTime = getTravelTime(dist, 'bus');
+  const jeepTime = getTravelTime(dist, 'jeepney');
+  const stops = generateStops(fromName, toName);
+  const schedule = generateSchedule();
+  return [
+    {
+      type: "bus",
+      fare: busFare,
+      eta: busTime,
+      availability: `${10 + hashString(fromName + toName + "bus") % 30} seats`,
+      badge: "green",
+      badgeTxt: "Available",
+      vehicleNo: "B-" + (100 + hashString(fromName + toName + "bus") % 900),
+      driver: "Driver " + (hashString(fromName + toName + "bus") % 100 + 1),
+      capacity: `${20 + hashString(fromName + toName + "bus") % 30} / 50`,
+    },
+    {
+      type: "jeepney",
+      fare: jeepFare,
+      eta: jeepTime,
+      availability: `${5 + hashString(fromName + toName + "jeep") % 15} seats`,
+      badge: "green",
+      badgeTxt: "Available",
+      vehicleNo: "J-" + (100 + hashString(fromName + toName + "jeep") % 900),
+      driver: "Driver " + (hashString(fromName + toName + "jeep") % 100 + 1),
+      capacity: `${10 + hashString(fromName + toName + "jeep") % 20} / 20`,
+    }
+  ];
+}
+
+// Location picker state
+let selectedFrom = "Tarlac City";
+let selectedTo = null;
+let activeLocationField = null;
+let recentLocations = store.get("saccess_recent_locations", []);
+
+function openLocationPicker(field) {
+  activeLocationField = field;
+  const title = field === 'from' ? 'Select Starting Location' : 'Where are you going?';
+  $('#locationModalTitle').textContent = title;
+  $('#locationSearch').value = '';
+  renderLocationList('');
+  openModal('locationModal');
+}
+
+function closeLocationPicker() {
+  closeModals();
+}
+
+function renderLocationList(filter) {
+  const list = $('#locationList');
+  let filtered = LOCATIONS;
+  if (filter.trim()) {
+    const q = filter.toLowerCase().trim();
+    filtered = LOCATIONS.filter(l => l.name.toLowerCase().includes(q) || l.province.toLowerCase().includes(q));
+  }
+  let html = '';
+  if (recentLocations.length && !filter.trim()) {
+    html += `<div class="recent-section"><div style="font-size:.8rem;font-weight:700;color:var(--muted);margin:8px 0 4px;">Recent</div>`;
+    html += recentLocations.map(name => {
+      const loc = LOCATIONS.find(l => l.name === name);
+      if (!loc) return '';
+      return `<span class="chip" data-loc-name="${loc.name}">${loc.name}</span>`;
+    }).join('');
+    html += `</div>`;
+  }
+  if (!filter.trim()) {
+    html += `<div class="popular-section"><div style="font-size:.8rem;font-weight:700;color:var(--muted);margin:8px 0 4px;">Popular</div>`;
+    html += POPULAR_LOCATIONS.map(name => {
+      const loc = LOCATIONS.find(l => l.name === name);
+      if (!loc) return '';
+      return `<span class="chip" data-loc-name="${loc.name}">${loc.name}</span>`;
+    }).join('');
+    html += `</div>`;
+  }
+  const regions = {};
+  filtered.forEach(loc => {
+    if (!regions[loc.region]) regions[loc.region] = [];
+    regions[loc.region].push(loc);
+  });
+  for (const [region, locs] of Object.entries(regions)) {
+    html += `<div class="region-heading">${region}</div>`;
+    locs.forEach(loc => {
+      const selected = (activeLocationField === 'from' && selectedFrom === loc.name) || (activeLocationField === 'to' && selectedTo === loc.name);
+      html += `
+        <div class="location-row ${selected ? 'selected' : ''}" data-loc-name="${loc.name}">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="loc-icon"><use href="#icon-location"/></svg>
+          <span class="loc-name">${loc.name}</span>
+          <span class="loc-sub">${loc.province}</span>
+        </div>
+      `;
+    });
+  }
+  if (!filtered.length) {
+    html = `<div class="empty-state">No locations found</div>`;
+  }
+  list.innerHTML = html;
+  list.querySelectorAll('[data-loc-name]').forEach(el => {
+    el.addEventListener('click', () => {
+      const name = el.dataset.locName;
+      selectLocation(name);
+    });
+  });
+}
+
+function selectLocation(name) {
+  if (!activeLocationField) return;
+  const field = activeLocationField;
+  if (field === 'from') {
+    selectedFrom = name;
+    const display = document.querySelector('#homeFromDisplay') || document.querySelector('#searchFromDisplay');
+    if (display) {
+      display.textContent = name;
+      display.dataset.selected = name;
+    }
+  } else {
+    selectedTo = name;
+    const display = document.querySelector('#homeToDisplay') || document.querySelector('#searchToDisplay');
+    if (display) {
+      display.textContent = name;
+      display.dataset.selected = name;
+    }
+  }
+  recentLocations = recentLocations.filter(l => l !== name);
+  recentLocations.unshift(name);
+  if (recentLocations.length > 5) recentLocations.pop();
+  store.set("saccess_recent_locations", recentLocations);
+  closeLocationPicker();
+}
+
+function bindLocationDisplays() {
+  document.querySelectorAll('.location-display').forEach(el => {
+    el.addEventListener('click', () => {
+      const field = el.closest('[data-location-field]')?.dataset.locationField;
+      if (field) openLocationPicker(field);
+    });
+  });
+}
+
+function swapLocations() {
+  const fromDisplay = document.querySelector('#homeFromDisplay') || document.querySelector('#searchFromDisplay');
+  const toDisplay = document.querySelector('#homeToDisplay') || document.querySelector('#searchToDisplay');
+  if (!fromDisplay || !toDisplay) return;
+  const fromText = fromDisplay.dataset.selected || '';
+  const toText = toDisplay.dataset.selected || '';
+  fromDisplay.textContent = toText || 'Select starting location';
+  fromDisplay.dataset.selected = toText;
+  toDisplay.textContent = fromText || 'Where to?';
+  toDisplay.dataset.selected = fromText;
+  selectedFrom = toText || null;
+  selectedTo = fromText || null;
+}
+
+const TYPES = {
+  bus:        { name: "Bus",        icon: ICONS.bus, color: "#E8F8EE", fare: 25, label: "Provincial / city bus" },
+  jeepney:    { name: "Modern Jeep", icon: ICONS.jeepney, color: "#FEF3E0", fare: 15, label: "Modernized Philippine jeepney" },
+};
+// Update ROUTES to use generated? Not needed, keep for static pages.
+
+/* Route definitions — every route connected to options */
+const ROUTES = [
+  {
+    id: "capas-tarlac", name: "Capas → Tarlac City", origin: "Capas Market", dest: "Tarlac City (MetroTown)",
+    distance: "18.9 km", stops: ["Capas Market", "New Clark City", "San Miguel", "Tarlac City (MetroTown)"],
+    schedule: "5:00 AM – 9:00 PM",
+    options: [
+      { type: "jeepney", fare: 15, eta: "30 min", availability: "14 seats", badge: "green", badgeTxt: "Available", vehicleNo: "J-077", driver: "Pedro M. Bautista", capacity: "14 / 20" },
+      { type: "bus",     fare: 25, eta: "25 min", availability: "18 seats", badge: "green", badgeTxt: "Available", vehicleNo: "B-204", driver: "Ramon C. Dela Cruz", capacity: "32 / 50" },
+    ],
+  },
+  {
+    id: "tarlac-angeles", name: "Tarlac City → Angeles City", origin: "Tarlac City Terminal", dest: "Angeles City (Balibago)",
+    distance: "34.2 km", stops: ["Tarlac City Terminal", "Capas Junction", "Concepcion", "Mabalacat", "Angeles City (Balibago)"],
+    schedule: "4:00 AM – 10:00 PM",
+    options: [
+      { type: "bus",     fare: 50, eta: "45 min", availability: "18 seats", badge: "green", badgeTxt: "Available", vehicleNo: "B-512", driver: "Gregorio P. Aquino", capacity: "32 / 50" },
+      { type: "jeepney", fare: 35, eta: "1 hr",   availability: "8 seats",  badge: "green", badgeTxt: "Available", vehicleNo: "J-201", driver: "Andres C. Lopez", capacity: "12 / 20" },
+    ],
+  },
+  {
+    id: "clark-sm", name: "Clark Loop → SM City Clark", origin: "Clark Freeport", dest: "SM City Clark",
+    distance: "8.6 km", stops: ["Clark Freeport", "Clark Museum", "Fontana", "Mabalacat Gate", "SM City Clark"],
+    schedule: "6:00 AM – 8:00 PM",
+    options: [
+      { type: "jeepney", fare: 15, eta: "20 min", availability: "5 seats", badge: "amber", badgeTxt: "Few left", vehicleNo: "EJ-118", driver: "Maria L. Santos", capacity: "11 / 16" },
+    ],
+  },
+  {
+    id: "angeles-manila", name: "Angeles City → Manila (Cubao)", origin: "Angeles City Terminal", dest: "Cubao, Quezon City",
+    distance: "85.5 km", stops: ["Angeles City Terminal", "Mabalacat", "Dau", "NLEX", "Cubao"],
+    schedule: "24 hours",
+    options: [
+      { type: "bus", fare: 150, eta: "2 hr 10 min", availability: "24 seats", badge: "green", badgeTxt: "Available", vehicleNo: "B-512", driver: "Gregorio P. Aquino", capacity: "26 / 50" },
+    ],
+  },
+  {
+    id: "sanfernando-angeles", name: "San Fernando → Angeles City", origin: "San Fernando Plaza", dest: "Angeles City (Hensonville)",
+    distance: "21.4 km", stops: ["San Fernando Plaza", "Dolores", "San Jose", "Mabalacat", "Angeles Hensonville"],
+    schedule: "5:00 AM – 9:00 PM",
+    options: [
+      { type: "jeepney", fare: 25, eta: "30 min", availability: "6 seats", badge: "amber", badgeTxt: "Few left", vehicleNo: "J-310", driver: "Lucia A. Villanueva", capacity: "10 / 16" },
+      { type: "bus",     fare: 35, eta: "35 min", availability: "20 seats", badge: "green", badgeTxt: "Available", vehicleNo: "B-405", driver: "Ricardo N. Garcia", capacity: "30 / 50" },
+    ],
+  },
+  {
+    id: "manila-makati", name: "Manila → Makati CBD", origin: "Taft Avenue", dest: "Makati CBD",
+    distance: "12.6 km", stops: ["Taft Avenue", "Buendia", "Ayala", "Makati CBD"],
+    schedule: "5:30 AM – 11:00 PM",
+    options: [
+      { type: "bus", fare: 30, eta: "40 min", availability: "16 seats", badge: "green", badgeTxt: "Available", vehicleNo: "B-118", driver: "Lourdes M. Diaz", capacity: "34 / 50" },
+    ],
+  },
+  {
+    id: "tarlac-capas", name: "Tarlac City → Capas", origin: "Tarlac City (MetroTown)", dest: "Capas Market",
+    distance: "18.9 km", stops: ["Tarlac City (MetroTown)", "San Miguel", "New Clark City", "Capas Market"],
+    schedule: "5:00 AM – 9:00 PM",
+    options: [
+      { type: "jeepney", fare: 15, eta: "30 min", availability: "10 seats", badge: "green", badgeTxt: "Available", vehicleNo: "J-077", driver: "Pedro M. Bautista", capacity: "10 / 20" },
+    ],
+  },
+  {
+    id: "clark-angeles", name: "Clark → Angeles City", origin: "Clark Freeport", dest: "Angeles City Terminal",
+    distance: "10.4 km", stops: ["Clark Freeport", "Mabalacat Gate", "Angeles City Terminal"],
+    schedule: "5:30 AM – 10:00 PM",
+    options: [
+      { type: "bus", fare: 25, eta: "20 min", availability: "22 seats", badge: "green", badgeTxt: "Available", vehicleNo: "B-306", driver: "Arturo L. Santos", capacity: "28 / 50" },
+    ],
+  },
+];
+
+const POPULAR_IDS = ["capas-tarlac", "tarlac-angeles", "angeles-manila", "clark-sm"];
+
+const NOTIFICATIONS = [
+  { icon: "route", color: "#E8F8EE", title: "Route update", text: "Angeles City → Manila is now 15 min delayed due to NLEX traffic.", time: "2 min ago" },
+  { icon: "bell", color: "#E3F3FC", title: "Vehicle arriving", text: "Bus B-102 is arriving soon on your saved route.", time: "12 min ago" },
+  { icon: "bus", color: "#FEF3E0", title: "New vehicle available", text: "A new vehicle is available on Capas → Tarlac City.", time: "1 hr ago" },
+  { icon: "check", color: "#E8F8EE", title: "Trip completed", text: "Your ride from Capas to Tarlac City has been completed.", time: "Yesterday" },
+  { icon: "star-filled", color: "#F3E8FF", title: "Fare update", text: "Jeepney fare on San Fernando routes adjusted to ₱25.", time: "Yesterday" },
+];
+
+/* ---------- Global state ---------- */
+let currentUser = store.get("saccess_user", null);
+let vehicles = store.get("saccess_vehicles", []);
+let favorites = store.get("saccess_favorites", { routes: [], dest: [], transport: [] });
+let activeFavTab = "routes";
+let activeFilter = "all";
+let activeTypeFilter = "all";
+let lastSearchResults = [];
+let currentTrack = null;
+let tripTimers = {};
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+/* ---------- Navigation ---------- */
+const PAGE_ROLES = {
+  "home": ["passenger"], "search": ["passenger"], "transport": ["passenger"],
+  "routes": ["passenger"], "track": ["passenger"], "favorites": ["passenger"],
+  "notifications": ["passenger"], "profile": ["passenger"],
+  "dashboard": ["driver"], "register": ["driver"], "business": ["passenger", "driver", "guest"],
+};
+
+function navLinksFor(role) {
+  if (role === "driver") {
+    return [
+      ["dashboard", "Dashboard"], ["register", "My Vehicles"], ["business", "Partners"], ["profile", "Profile"],
+    ];
+  }
+  return [
+    ["home", "Home"], ["search", "Search"], ["transport", "Transport"], ["routes", "Routes"],
+    ["track", "Map"], ["favorites", "Favorites"], ["notifications", "Notifications"], ["profile", "Profile"],
+  ];
+}
+
+function navigate(page, opts = {}) {
+  const role = currentUser ? currentUser.type : "guest";
+  const allowed = PAGE_ROLES[page] || [];
+  if (!opts.force && allowed.length && role !== "guest" && !allowed.includes(role)) {
+    page = role === "driver" ? "dashboard" : "home";
+  }
+  $$(".page").forEach(p => p.classList.remove("active"));
+  const target = $("#page-" + page);
+  if (target) target.classList.add("active");
+  $$(".links a").forEach(a => a.classList.toggle("active", a.dataset.nav === page));
+  $("#navLinks").classList.remove("open");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if (page === "dashboard") renderDashboard();
+  if (page === "profile") renderProfile();
+  if (page === "favorites") renderFavorites();
+  if (page === "track" && !currentTrack) setTrackForRoute(ROUTES[0]);
+}
+
+function setupNav() {
+  const role = currentUser ? currentUser.type : "guest";
+  const links = navLinksFor(role);
+  const closeBtn = `<button class="close-mobile" id="closeMobileMenu" aria-label="Close menu">✕</button>`;
+  // Add mobile-only links: For Operators and Logout
+  const mobileExtra = [
+    ["business", "For Operators"],
+    ["logout", "Logout"]
+  ];
+  const allLinks = [...links, ...mobileExtra];
+  $("#navLinks").innerHTML = closeBtn + allLinks.map(([id, label]) => {
+    const isMobileOnly = id === 'business' || id === 'logout';
+    return `<a data-nav="${id}" class="${isMobileOnly ? 'mobile-only' : ''}" data-logout="${id === 'logout' ? 'true' : 'false'}">${label}</a>`;
+  }).join("");
+  $("#closeMobileMenu").addEventListener("click", () => {
+    $("#navLinks").classList.remove("open");
+  });
+  $$("#navLinks a").forEach(a => {
+    a.addEventListener("click", (e) => {
+      if (a.dataset.nav === "logout") {
+        e.preventDefault();
+        showLogoutConfirmation();
+        return;
+      }
+      navigate(a.dataset.nav);
+    });
+  });
+  $("#navPartner").style.display = role === "driver" ? "none" : "inline-flex";
+}
+
+/* ---------- Auth ---------- */
+function getUsers() { return store.get("saccess_users", []); }
+function setUsers(u) { store.set("saccess_users", u); }
+
+function showAuth() {
+  $("#nav").style.display = "none";
+  $$(".page").forEach(p => p.classList.remove("active"));
+  $("#page-auth").classList.add("active");
+}
+
+function enterApp() {
+  $("#nav").style.display = "block";
+  setupNav();
+  const home = currentUser.type === "driver" ? "dashboard" : "home";
+  navigate(home, { force: true });
+  toast(currentUser.type === "driver" ? "Welcome to your dashboard" : `Welcome, ${currentUser.name.split(" ")[0]}!`);
+}
+
+$$("[data-authtab]").forEach(t => t.addEventListener("click", () => switchAuthTab(t.dataset.authtab)));
+function switchAuthTab(tab) {
+  $$(".auth-tabs .pill").forEach(p => p.classList.toggle("active", p.dataset.authtab === tab));
+  $("#loginForm").style.display = tab === "login" ? "block" : "none";
+  $("#signupForm").style.display = tab === "signup" ? "block" : "none";
+}
+
+$("#loginForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const id = $("#loginId").value.trim().toLowerCase();
+  const pass = $("#loginPass").value;
+  const users = getUsers();
+  const user = users.find(u => (u.email === id || u.mobile === id) && u.password === pass);
+  if (!user) { toast("Invalid email or password"); return; }
+  currentUser = user;
+  store.set("saccess_user", user);
+  enterApp();
+});
+
+$("#signupForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("#suName").value.trim();
+  const mobile = $("#suMobile").value.trim();
+  const email = $("#suEmail").value.trim().toLowerCase();
+  const pass = $("#suPass").value;
+  const pass2 = $("#suPass2").value;
+  const type = $("#suType").value;
+  if (!name || !mobile || !email || !pass) { toast("Please fill in all fields"); return; }
+  if (pass.length < 6) { toast("Password must be at least 6 characters"); return; }
+  if (pass !== pass2) { toast("Passwords do not match"); return; }
+  const users = getUsers();
+  if (users.some(u => u.email === email || u.mobile === mobile)) { toast("Account already exists"); return; }
+  const user = { name, mobile, email, password: pass, type };
+  users.push(user);
+  setUsers(users);
+  currentUser = user;
+  store.set("saccess_user", user);
+  switchAuthTab("login");
+  toast("Account Created → Login");
+  $("#loginId").value = email;
+  $("#loginPass").value = "";
+});
+
+function logout() {
+  currentUser = null;
+  store.del("saccess_user");
+  $("#nav").style.display = "none";
+  $("#navLinks").innerHTML = "";
+  $$(".page").forEach(p => p.classList.remove("active"));
+  $("#page-auth").classList.add("active");
+  toast("Logged out");
+  closeModals();
+}
+
+function showLogoutConfirmation() {
+  $("#genericModalCard").innerHTML = `
+    <button class="close" onclick="closeModals()">✕</button>
+    <h3>Log out of SAccess?</h3>
+    <div style="display:flex; gap:12px; margin-top:20px;">
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" id="confirmLogout">Log Out</button>
+    </div>
+  `;
+  openModal("genericModal");
+  $("#confirmLogout").addEventListener("click", () => {
+    closeModals();
+    logout();
+  });
+}
+$("#navLogout").addEventListener("click", showLogoutConfirmation);
+$("#logoutBtn").addEventListener("click", logout);
+$("#hamburger").addEventListener("click", () => $("#navLinks").classList.toggle("open"));
+function bindNavAttrs() {
+  $$("[data-nav]").forEach(el => {
+    el.onclick = () => navigate(el.dataset.nav);
+  });
+}
+bindNavAttrs();
+
+/* ---------- Card builders ---------- */
+function optionCardHTML(route, opt) {
+  const t = TYPES[opt.type];
+  const badgeCls = opt.badge;
+  return `
+    <div class="card" data-route-id="${route.id}" data-opt-type="${opt.type}">
+      <div class="top">
+        <div class="vtype"><span class="ic" style="background:${t.color}">
+          <svg viewBox="0 0 100 60" width="32" height="20" style="display:block;margin:auto"><use href="#vehicle-${opt.type}" /></svg>
+        </span>${t.name}</div>
+        <span class="badge ${badgeCls}">${opt.badgeTxt}</span>
+      </div>
+      <h3>${route.name}</h3>
+      <div class="route">${route.origin} → ${route.dest}</div>
+      <div class="meta">
+        <span class="eta"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><polyline points="8 4 8 8 10 10"/></svg> ${opt.eta}</span>
+        <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l6-4 6 4-6 4-6-4z"/><path d="M2 10v4l6 2 6-2v-4"/></svg> ${route.distance}</span>
+        <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M5 5l6 6M11 5l-6 6"/></svg> ₱${opt.fare}</span>
+        <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v9M8 5v9M12 5v9M2 3h12v2H2z"/></svg> ${opt.availability}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" data-view-route="${route.id}">View Route</button>
+        <button class="btn btn-ghost btn-sm" data-add-fav="${route.id}" title="Add to favorites">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
+      </div>
+    </div>`;
+}
+
+function routeCardHTML(route) {
+  const opt = route.options[0];
+  const t = TYPES[opt.type];
+  return `
+    <div class="card" data-route-id="${route.id}">
+      <div class="top">
+        <div class="vtype"><span class="ic" style="background:${t.color}">${t.icon}</span>${t.name}</div>
+        <span class="badge green">from ₱${Math.min(...route.options.map(o => o.fare))}</span>
+      </div>
+      <h3>${route.name}</h3>
+      <div class="route">${route.origin} → ${route.dest}</div>
+      <div class="meta">
+        <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l6-4 6 4-6 4-6-4z"/><path d="M2 10v4l6 2 6-2v-4"/></svg> ${route.distance}</span>
+        <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><polyline points="8 4 8 8 10 10"/></svg> ${route.schedule}</span>
+        <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M5 5l6 6M11 5l-6 6"/></svg> ${route.options.length} options</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" data-view-route="${route.id}">View Route</button>
+        <button class="btn btn-ghost btn-sm" data-add-fav="${route.id}">☆</button>
+      </div>
+    </div>`;
+}
+
+function bindCards() {
+  $$("[data-view-route]").forEach(b => {
+    b.removeEventListener("click", onViewRoute);
+    b.addEventListener("click", onViewRoute);
+  });
+  $$("[data-add-fav]").forEach(b => {
+    b.removeEventListener("click", onAddFav);
+    b.addEventListener("click", onAddFav);
+  });
+  $$("[data-vehicle-detail]").forEach(b => {
+    b.removeEventListener("click", onVehicleDetail);
+    b.addEventListener("click", onVehicleDetail);
+  });
+}
+
+function onViewRoute(e) { showRoute(e.currentTarget.dataset.viewRoute); }
+function onAddFav(e) {
+  const id = e.currentTarget.dataset.addFav;
+  toggleFavorite("routes", id);
+}
+function onVehicleDetail(e) { showVehicleModal(e.currentTarget.dataset.vehicleDetail); }
+
+/* ---------- Render home / search / transport / routes ---------- */
+function renderStatic() {
+  $("#catGrid").innerHTML = Object.entries(TYPES).map(([id, t]) => {
+    const isBus = id === 'bus';
+    const iconHtml = t.icon;
+    return `
+    <div class="cat-card" data-type="${id}">
+      <div class="cat-icon" style="background:${t.color};display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:16px;margin:0 auto 12px;">
+        ${iconHtml}
+      </div>
+      <h3>${t.name}</h3>
+      <p style="font-weight:600;font-size:.9rem;color:var(--ink);">${isBus ? 'Safe and reliable bus rides' : 'Safe and convenient everyday rides'}</p>
+      <p style="font-size:.85rem;color:var(--muted);">${isBus ? 'Track your assigned bus along the route' : 'Track your modern jeep along the route'}</p>
+      <div class="cat-details">
+        <span>Estimated Fare: ₱${t.fare}+</span>
+        <span>Travel Time: Based on selected route</span>
+        <span>Trip Status: Available</span>
+      </div>
+      <div class="cat-actions">
+        <button class="btn btn-primary btn-sm" data-view-route="${id}">View Route</button>
+        <button class="btn btn-ghost btn-sm" data-track-vehicle="${id}">${isBus ? 'Track Bus' : 'Track Jeep'}</button>
+      </div>
+    </div>`;
+  }).join("");
+  $$("#catGrid .cat-card").forEach(c => {
+    c.addEventListener("click", () => {
+      navigate("transport");
+      toast(`Filtering ${TYPES[c.dataset.type].name}`);
+    });
+    const viewBtn = c.querySelector('[data-view-route]');
+    if (viewBtn) viewBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const type = c.dataset.type;
+      navigate("search");
+      activeTypeFilter = type;
+      document.getElementById('typeFilter').value = type;
+      renderSearchResults();
+      toast(`Showing ${TYPES[type].name} routes`);
+    });
+    const trackBtn = c.querySelector('[data-track-vehicle]');
+    if (trackBtn) trackBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigate("track");
+      if (ROUTES.length) setTrackForRoute(ROUTES[0]);
+    });
+  });
+  
+  // Update notification icons to use SVG
+  const notifList = $("#notifList");
+  if (notifList) {
+    notifList.innerHTML = NOTIFICATIONS.map(n => `
+      <div class="notif">
+        <div class="n-icon" style="background:${n.color}">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-${n.icon}"/></svg>
+        </div>
+        <div><h4>${n.title}</h4><p>${n.text}</p></div>
+        <span class="time">${n.time}</span>
+      </div>`).join("");
+  }
+
+  $("#popularRoutes").innerHTML = POPULAR_IDS.map(id => routeCardHTML(ROUTES.find(r => r.id === id))).join("");
+  $("#transportCards").innerHTML = ROUTES.map(routeCardHTML).join("");
+  $("#routeList").innerHTML = ROUTES.map(routeCardHTML).join("");
+  bindCards();
+
+  $("#notifList").innerHTML = NOTIFICATIONS.map(n => `
+    <div class="notif">
+      <div class="n-icon" style="background:${n.color}">${n.icon}</div>
+      <div><h4>${n.title}</h4><p>${n.text}</p></div>
+      <span class="time">${n.time}</span>
+    </div>`).join("");
+}
+
+/* ---------- Search ---------- */
+function allOptions() {
+  return ROUTES.flatMap(r => r.options.map(o => ({ route: r, opt: o })));
+}
+
+function applyFilter(list) {
+  let res = [...list];
+  if (activeTypeFilter !== "all") res = res.filter(x => x.opt.type === activeTypeFilter);
+  if (activeFilter === "fare") res.sort((a, b) => a.opt.fare - b.opt.fare);
+  else if (activeFilter === "fast") res.sort((a, b) => parseFloat(a.opt.eta) - parseFloat(b.opt.eta));
+  else if (activeFilter === "near") res.sort((a, b) => parseFloat(a.route.distance) - parseFloat(b.route.distance));
+  return res;
+}
+
+function doSearch() {
+  const from = selectedFrom || '';
+  const to = selectedTo || '';
+  if (!from || !to) { toast("Please select both starting location and destination"); return; }
+  if (from === to) { toast("Please select a different destination."); return; }
+  // Generate route options dynamically
+  const options = generateRouteOptions(from, to);
+  // Build virtual route object
+  const route = {
+    id: from + "-" + to,
+    name: `${from} → ${to}`,
+    origin: from,
+    dest: to,
+    distance: getDistance(from, to).toFixed(1) + " km",
+    stops: generateStops(from, to),
+    schedule: generateSchedule(),
+    options: options,
+  };
+  // Store as lastSearchResults as an array of {route, opt} for compatibility
+  lastSearchResults = route.options.map(opt => ({ route: route, opt: opt }));
+  renderSearchResults();
+  $("#resultsHeading").textContent = `Rides from ${from} to “${to}”`;
+  $("#filterBar").style.display = "flex";
+  const recent = $("#recentList");
+  const existing = [...recent.querySelectorAll(".chip")].some(c => c.textContent === to);
+  if (!existing) {
+    const chip = document.createElement("span");
+    chip.className = "chip"; chip.textContent = to;
+    chip.addEventListener("click", () => { selectedTo = to; doSearch(); });
+    recent.prepend(chip);
+  }
+  navigate("search", { force: true });
+  toast(`${route.options.length} ride${route.options.length !== 1 ? "s" : ""} found`);
+}
+
+function renderSearchResults() {
+  const res = applyFilter(lastSearchResults);
+  $("#searchResults").innerHTML = res.map(x => optionCardHTML(x.route, x.opt)).join("");
+  // Also update the popular routes on home? Not needed.
+  // Update the transportCards and routeList? Not necessary as they still use static ROUTES.
+  // But we can also update them? For consistency, we can keep static routes for those pages.
+  bindCards();
+}
+
+$("#homeSearch").addEventListener("click", doSearch);
+$("#searchBtn").addEventListener("click", doSearch);
+$("#homeSwap").addEventListener("click", swapLocations);
+$$("#homeChips .chip").forEach(c => c.addEventListener("click", () => {
+  selectedTo = c.textContent;
+  const display = document.querySelector('#homeToDisplay') || document.querySelector('#searchToDisplay');
+  if (display) { display.textContent = c.textContent; display.dataset.selected = c.textContent; }
+  doSearch();
+}));
+$$("#suggested .chip").forEach(c => c.addEventListener("click", () => {
+  selectedTo = c.textContent;
+  const display = document.querySelector('#searchToDisplay');
+  if (display) { display.textContent = c.textContent; display.dataset.selected = c.textContent; }
+  doSearch();
+}));
+
+$$(".filter-bar .pill").forEach(p => p.addEventListener("click", () => {
+  $$(".filter-bar .pill").forEach(x => x.classList.remove("active"));
+  p.classList.add("active");
+  activeFilter = p.dataset.filter;
+  renderSearchResults();
+}));
+$("#typeFilter").addEventListener("change", e => {
+  activeTypeFilter = e.target.value;
+  renderSearchResults();
+});
+
+/* ---------- Favorites ---------- */
+function toggleFavorite(tab, id) {
+  const list = favorites[tab] || [];
+  const idx = list.indexOf(id);
+  if (idx >= 0) { list.splice(idx, 1); toast("Removed from favorites"); }
+  else { list.push(id); toast("Added to favorites"); }
+  favorites[tab] = list;
+  store.set("saccess_favorites", favorites);
+  if ($("#page-favorites").classList.contains("active")) renderFavorites();
+}
+
+function renderFavorites() {
+  const ids = favorites[activeFavTab] || [];
+  $("#favEmpty").style.display = ids.length ? "none" : "block";
+  $("#favoritesList").innerHTML = ids.map(id => {
+    const route = ROUTES.find(r => r.id === id);
+    if (!route) return "";
+    if (activeFavTab === "routes" || activeFavTab === "transport") {
+      return routeCardHTML(route).replace('[data-add-fav="' + id + '"]', '[data-add-fav="' + id + '"] data-fav-remove');
+    }
+    return `
+      <div class="card">
+        <div class="vtype"><span class="ic" style="background:#E3F3FC">📍</span>Destination</div>
+        <h3>${route.dest}</h3><div class="route">${route.name}</div>
+        <div class="actions"><button class="btn btn-ghost btn-sm" data-add-fav="${id}">Remove</button></div>
+      </div>`;
+  }).join("");
+  $$("#favoritesList [data-add-fav]").forEach(b => {
+    b.removeEventListener("click", onAddFav);
+    b.addEventListener("click", onAddFav);
+  });
+  bindCards();
+}
+
+$$("[data-favtab]").forEach(p => p.addEventListener("click", () => {
+  $$("[data-favtab]").forEach(x => x.classList.remove("active"));
+  p.classList.add("active");
+  activeFavTab = p.dataset.favtab;
+  renderFavorites();
+}));
+
+/* ---------- Modals ---------- */
+function openModal(id) { $("#" + id).classList.add("open"); document.body.style.overflow = "hidden"; }
+function closeModals() {
+  $$(".modal-overlay").forEach(m => m.classList.remove("open"));
+  document.body.style.overflow = "";
+}
+$$(".modal-overlay").forEach(m => m.addEventListener("click", e => { if (e.target === m) closeModals(); }));
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModals(); });
+
+function showRoute(id) {
+  const route = ROUTES.find(r => r.id === id) || ROUTES[0];
+  const options = route.options.map((o, i) => {
+    const t = TYPES[o.type];
+    return `
+      <div class="stop" style="align-items:center">
+        <div class="rail"><span class="dot ${i === 0 ? "first" : ""}"></span><span class="line"></span></div>
+        <div style="flex:1">
+          <b>${t.icon} ${t.name} · ${o.vehicleNo}</b>
+          <span>${o.eta} · ₱${o.fare} · ${o.availability}</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-vehicle-detail="${route.id}:${i}">Track</button>
+      </div>`;
+  }).join("");
+
+  $("#routeModalCard").innerHTML = `
+    <button class="close" onclick="closeModals()">✕</button>
+    <h3>${route.name}</h3>
+    <div class="muted">${route.origin} → ${route.dest}</div>
+    <div class="meta-row">
+      <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l6-4 6 4-6 4-6-4z"/><path d="M2 10v4l6 2 6-2v-4"/></svg> ${route.distance}</span>
+      <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><polyline points="8 4 8 8 10 10"/></svg> ${route.schedule}</span>
+    </div>
+    <h4 style="margin:14px 0 6px">Transportation options</h4>
+    <div class="stop-list">${options}</div>
+    <div class="actions" style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="startRoute('${route.id}')">Start Route</button>
+      <button class="btn btn-ghost" id="modalFavBtn" data-fav-toggle="${route.id}">☆ Save</button>
+    </div>`;
+  openModal("routeModal");
+  $$("#routeModalCard [data-vehicle-detail]").forEach(b => {
+    b.addEventListener("click", () => showVehicleModal(b.dataset.vehicleDetail));
+  });
+  const favBtn = $("#modalFavBtn");
+  if (favBtn) {
+    favBtn.addEventListener("click", () => {
+      toggleFavorite("routes", route.id);
+      favBtn.textContent = favorites.routes.includes(route.id) ? "★ Saved" : "☆ Save";
+    });
+  }
+}
+
+function showVehicleModal(key) {
+  const [rid, oidx] = key.split(":");
+  const route = ROUTES.find(r => r.id === rid) || ROUTES[0];
+  const o = route.options[+oidx] || route.options[0];
+  const t = TYPES[o.type];
+  $("#vehicleModalCard").innerHTML = `
+    <button class="close" onclick="closeModals()">✕</button>
+    <div class="vtype"><span class="ic" style="background:${t.color}">${t.icon}</span><b>${t.name} · ${o.vehicleNo}</b></div>
+    <h3>${route.name}</h3>
+    <div class="muted">${route.origin} → ${route.dest}</div>
+    <div class="track-row"><span>Driver</span><b>${o.driver}</b></div>
+    <div class="track-row"><span>Estimated arrival</span><b>${o.eta}</b></div>
+    <div class="track-row"><span>Fare</span><b>₱${o.fare}</b></div>
+    <div class="track-row"><span>Capacity / status</span><b>${o.capacity}</b></div>
+    <div class="track-row"><span>Availability</span><b>${o.availability}</b></div>
+    <div class="progress" style="margin:16px 0"><div class="bar" style="width:${parseInt(o.capacity) / 55 * 100}%"></div></div>
+    <button class="btn btn-primary btn-block" onclick="startRoute('${route.id}',${oidx})">View Live Location</button>`;
+  openModal("vehicleModal");
+}
+
+function startRoute(routeId, oidx = 0) {
+  closeModals();
+  setTrackForRoute(ROUTES.find(r => r.id === routeId) || ROUTES[0], oidx);
+  navigate("track", { force: true });
+  toast("Route started · simulated live location");
+}
+window.startRoute = startRoute;
+window.toggleFavorite = toggleFavorite;
+window.closeModals = closeModals;
+window.navigate = navigate;
+
+/* ---------- Map / tracking simulation ---------- */
+function setTrackForRoute(route, oidx = 0) {
+  currentTrack = { route, oidx };
+  const o = route.options[oidx];
+  const t = TYPES[o.type];
+
+  $("#trackTitle").textContent = `${t.name} ${o.vehicleNo}`;
+  $("#trackRoute").textContent = `${route.origin} → ${route.dest}`;
+  $("#trackEta").textContent = parseFloat(o.eta) || 0;
+  $("#trackNext").textContent = route.stops[1] || route.dest;
+  $("#trackDist").textContent = route.distance;
+  $("#trackFare").textContent = `₱${o.fare}`;
+  $("#trackCap").textContent = o.capacity;
+  $("#trackBar").style.width = (parseInt(o.capacity) / 55 * 100) + "%";
+
+  initMap();
+  drawMap(route, oidx);
+  const btn = $("#trackVehicleBtn");
+  btn.onclick = () => showVehicleModal(`${route.id}:${oidx}`);
+}
+
+let mapInstance = null;
+let mapLayers = { route: null, markers: [], vehicle: null, stops: [] };
+
+function initMap() {
+  if (mapInstance) return;
+  const container = document.getElementById('trackMapContainer');
+  if (!container) return;
+  mapInstance = L.map(container, {
+    center: [12.8797, 121.7740], // Philippines center
+    zoom: 6,
+    zoomControl: false,
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(mapInstance);
+  // Attach zoom buttons
+  document.querySelector('.map-zoom[data-zoom="in"]')?.addEventListener('click', () => mapInstance.zoomIn());
+  document.querySelector('.map-zoom[data-zoom="out"]')?.addEventListener('click', () => mapInstance.zoomOut());
+  // Invalidate size after a short delay to ensure container is rendered
+  setTimeout(() => mapInstance.invalidateSize(), 200);
+  // Handle resize
+  window.addEventListener('resize', () => mapInstance.invalidateSize());
+}
+
+function clearMapLayers() {
+  if (mapInstance) {
+    if (mapLayers.route) { mapInstance.removeLayer(mapLayers.route); mapLayers.route = null; }
+    mapLayers.markers.forEach(m => mapInstance.removeLayer(m));
+    mapLayers.markers = [];
+    if (mapLayers.vehicle) { mapInstance.removeLayer(mapLayers.vehicle); mapLayers.vehicle = null; }
+    mapLayers.stops.forEach(m => mapInstance.removeLayer(m));
+    mapLayers.stops = [];
+  }
+}
+
+function getIconForType(type) {
+  const svg = type === 'bus' ? document.getElementById('icon-bus') : document.getElementById('icon-jeepney');
+  if (!svg) return L.divIcon({html: '🚌', className: ''});
+  const svgString = new XMLSerializer().serializeToString(svg);
+  const html = `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg.innerHTML}</svg>`;
+  return L.divIcon({ html, className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+}
+
+function drawMap(route, oidx) {
+  if (!mapInstance) initMap();
+  if (!mapInstance) return;
+  clearMapLayers();
+  
+  const fromCoords = getLocationCoords(route.origin);
+  const toCoords = getLocationCoords(route.dest);
+  
+  // Create polyline with some intermediate points for curvature
+  const points = [
+    [fromCoords.lat, fromCoords.lng],
+    [(fromCoords.lat + toCoords.lat)/2 + 0.02, (fromCoords.lng + toCoords.lng)/2 - 0.02],
+    [toCoords.lat, toCoords.lng]
+  ];
+  const polyline = L.polyline(points, { color: '#22C55E', weight: 4, opacity: 0.8 }).addTo(mapInstance);
+  mapLayers.route = polyline;
+  
+  // Origin marker
+  const originIcon = L.divIcon({html: '📍', className: '', iconSize: [24, 24], iconAnchor: [12, 24]});
+  const originMarker = L.marker([fromCoords.lat, fromCoords.lng], { icon: originIcon }).addTo(mapInstance);
+  originMarker.bindPopup('Starting Location: ' + route.origin);
+  mapLayers.markers.push(originMarker);
+  
+  // Destination marker
+  const destIcon = L.divIcon({html: '📍', className: '', iconSize: [24, 24], iconAnchor: [12, 24]});
+  const destMarker = L.marker([toCoords.lat, toCoords.lng], { icon: destIcon }).addTo(mapInstance);
+  destMarker.bindPopup('Destination: ' + route.dest);
+  mapLayers.markers.push(destMarker);
+  
+  // Stops (generate some positions along the route)
+  const stopPositions = [];
+  for (let i = 0; i < route.stops.length; i++) {
+    const frac = (i + 1) / (route.stops.length + 1);
+    const lat = fromCoords.lat + (toCoords.lat - fromCoords.lat) * frac + 0.01 * (i % 3 - 1);
+    const lng = fromCoords.lng + (toCoords.lng - fromCoords.lng) * frac + 0.01 * (i % 3 - 1);
+    stopPositions.push({lat, lng});
+  }
+  stopPositions.forEach((pos, idx) => {
+    const stopIcon = L.divIcon({html: '🟢', className: '', iconSize: [16, 16], iconAnchor: [8, 8]});
+    const marker = L.marker([pos.lat, pos.lng], { icon: stopIcon }).addTo(mapInstance);
+    marker.bindPopup('Stop: ' + route.stops[idx]);
+    mapLayers.stops.push(marker);
+  });
+  
+  // Vehicle marker
+  const o = route.options[oidx];
+  const t = TYPES[o.type];
+  const vehicleIcon = getIconForType(o.type);
+  // Place vehicle at 60% along the route
+  const frac = 0.6;
+  const vehLat = fromCoords.lat + (toCoords.lat - fromCoords.lat) * frac + 0.01 * (Math.random() - 0.5);
+  const vehLng = fromCoords.lng + (toCoords.lng - fromCoords.lng) * frac + 0.01 * (Math.random() - 0.5);
+  const vehicleMarker = L.marker([vehLat, vehLng], { icon: vehicleIcon }).addTo(mapInstance);
+  vehicleMarker.bindPopup(`${t.name} ${o.vehicleNo} - ${o.availability}`);
+  mapLayers.vehicle = vehicleMarker;
+  // Store for simulation
+  window._vehicleMarker = vehicleMarker;
+  window._routePoints = points;
+  window._vehicleProgress = 0.6;
+  
+  // Fit bounds to route
+  const bounds = L.latLngBounds([fromCoords, toCoords]);
+  mapInstance.fitBounds(bounds, { padding: [50, 50] });
+}
+
+$$(".map-zoom").forEach(b => b.addEventListener("click", () => toast(b.dataset.zoom === "in" ? "Zoom in (simulated)" : "Zoom out (simulated)")));
+
+/* ---------- Vehicle registration ---------- */
+$("#regVehicleBtn").addEventListener("click", () => navigate("register", { force: true }));
+
+// Subscription functions
+function openSubscription(plan) {
+  const plans = {
+    free: { name: "Free", price: 0, details: "Basic listing · 1 vehicle" },
+    pro: { name: "Operator Pro", price: 99, details: "Route tracking · trip history · vehicle status" },
+    fleet: { name: "Fleet", price: 299, details: "Up to 5 vehicles · route tracking · trip monitoring" }
+  };
+  const p = plans[plan];
+  if (!p) return;
+  if (plan === 'free') {
+    // Activate free plan immediately
+    localStorage.setItem('saccess_subscription', JSON.stringify({ plan: p.name, active: true, amount: 0, method: 'Free' }));
+    showSubscriptionSuccess(p.name, 0);
+    return;
+  }
+  // Show payment modal for paid plans
+  const content = document.getElementById('subscriptionContent');
+  content.innerHTML = `
+    <h3>Confirm Subscription</h3>
+    <p><strong>Plan:</strong> ${p.name}</p>
+    <p><strong>Price:</strong> ₱${p.price}.00</p>
+    <p><strong>Payment Method:</strong> GCash</p>
+    <hr style="margin:16px 0;border-color:var(--line);">
+    <h4>Pay with GCash</h4>
+    <p><strong>GCash Number:</strong> 09939347036</p>
+    <p><strong>Amount to Pay:</strong> ₱${p.price}.00</p>
+    <p style="font-size:.85rem;color:var(--muted);">Send the exact amount to the GCash number above, then enter your GCash reference number below.</p>
+    <div style="margin-top:14px;">
+      <label style="display:block;font-weight:600;font-size:.9rem;margin-bottom:4px;">Payment Reference Number</label>
+      <input type="text" id="paymentRef" placeholder="Enter your GCash reference number" style="width:100%;padding:12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:.95rem;">
+    </div>
+    <button class="btn btn-primary btn-block" id="submitPayment" style="margin-top:16px;">Submit Payment</button>
+    <div id="paymentStatus" style="margin-top:16px;"></div>
+  `;
+  // Store plan for submission
+  window._pendingPlan = plan;
+  document.getElementById('submitPayment').addEventListener('click', () => {
+    const ref = document.getElementById('paymentRef').value.trim();
+    if (!ref) {
+      document.getElementById('paymentStatus').innerHTML = '<p style="color:var(--red);">Please enter your reference number.</p>';
+      return;
+    }
+    document.getElementById('paymentStatus').innerHTML = '<p style="color:var(--primary-ink);">Payment Submitted</p><p style="font-size:.85rem;color:var(--muted);">Your payment has been submitted for verification.</p><p><strong>Status:</strong> Pending Verification</p>';
+    document.getElementById('submitPayment').disabled = true;
+    // Simulate verification after 2 seconds
+    setTimeout(() => {
+      const planName = plans[window._pendingPlan].name;
+      const price = plans[window._pendingPlan].price;
+      localStorage.setItem('saccess_subscription', JSON.stringify({ plan: planName, active: true, amount: price, method: 'GCash', ref: ref }));
+      document.getElementById('paymentStatus').innerHTML = `
+        <div style="background:var(--primary-soft);padding:14px;border-radius:var(--radius-md);">
+          <h4 style="color:var(--primary-ink);">Payment Successful</h4>
+          <p>Your SAccess subscription is now active.</p>
+          <p><strong>Plan:</strong> ${planName}</p>
+          <p><strong>Payment Method:</strong> GCash</p>
+          <p><strong>Amount Paid:</strong> ₱${price}.00</p>
+          <p><strong>Status:</strong> Active</p>
+          <button class="btn btn-primary btn-block" onclick="closeModals();navigate('dashboard');">Go to Dashboard</button>
+        </div>
+      `;
+      document.getElementById('submitPayment').style.display = 'none';
+    }, 2000);
+  });
+  openModal('subscriptionModal');
+}
+
+function showSubscriptionSuccess(plan, amount) {
+  const content = document.getElementById('subscriptionContent');
+  content.innerHTML = `
+    <h3>Free Plan Active</h3>
+    <p>Your Free plan is now active.</p>
+    <button class="btn btn-primary btn-block" onclick="closeModals();navigate('dashboard');">Go to Dashboard</button>
+  `;
+  openModal('subscriptionModal');
+}
+
+// Bind subscription buttons
+document.getElementById('subscribeFree')?.addEventListener('click', () => openSubscription('free'));
+document.getElementById('subscribePro')?.addEventListener('click', () => openSubscription('pro'));
+document.getElementById('subscribeFleet')?.addEventListener('click', () => openSubscription('fleet'));
+
+$("#regForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("#rvName").value.trim();
+  const mobile = $("#rvMobile").value.trim();
+  const type = $("#rvType").value;
+  const plate = $("#rvPlate").value.trim();
+  const route = $("#rvRoute").value.trim();
+  const origin = $("#rvOrigin").value.trim();
+  const dest = $("#rvDest").value.trim();
+  const sched = $("#rvSched").value.trim();
+  const cap = $("#rvCap").value;
+  if (!name || !mobile || !type || !plate || !route || !origin || !dest || !sched || !cap) {
+    toast("Please fill in all fields"); return;
+  }
+  const vehicle = {
+    id: "V" + Date.now(), name, mobile, type, plate, route, origin, dest, sched,
+    cap: +cap, status: "Pending Verification", state: "offline", trips: 0, earnings: 0,
+  };
+  vehicles.push(vehicle);
+  store.set("saccess_vehicles", vehicles);
+  $("#regForm").style.display = "none";
+  $("#verifyStatus").style.display = "block";
+  toast("Registration submitted · Pending Verification");
+});
+
+$("#verifyContinue").addEventListener("click", () => navigate("dashboard"));
+
+function renderDashboard() {
+  $("#statVehicles").textContent = vehicles.length;
+  $("#statActive").textContent = vehicles.filter(v => v.state === "on_trip").length;
+  $("#statTrips").textContent = vehicles.reduce((a, v) => a + v.trips, 0);
+  $("#statEarnings").textContent = "₱" + vehicles.reduce((a, v) => a + v.earnings, 0);
+
+  $("#vehiclesEmpty").style.display = vehicles.length ? "none" : "block";
+  $("#vehiclesList").innerHTML = vehicles.map(v => {
+    const t = TYPES[v.type.toLowerCase()] || TYPES.bus;
+    const badge = v.state === "on_trip" ? "blue" : v.state === "active" ? "green" : "amber";
+    const badgeTxt = v.state === "on_trip" ? "ON TRIP" : v.state === "active" ? "Active" : v.status;
+    return `
+      <div class="veh-row" data-veh-id="${v.id}">
+        <div class="vicon" style="background:${t.color}">${t.icon}</div>
+        <div class="vinfo">
+          <h4>${t.name} ${v.plate}</h4>
+          <p>${v.route} · ${v.sched}</p>
+          <p class="muted">Capacity: ${v.cap} · Trips: ${v.trips} · Earnings: ₱${v.earnings}</p>
+        </div>
+        <span class="badge ${badge}">${badgeTxt}</span>
+        <div class="vactions">
+          <button class="btn btn-primary btn-sm" data-start-trip="${v.id}">Start Trip</button>
+          <button class="btn btn-ghost btn-sm" data-end-trip="${v.id}">End Trip</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  $$("[data-start-trip]").forEach(b => b.addEventListener("click", () => startTrip(b.dataset.startTrip)));
+  $$("[data-end-trip]").forEach(b => b.addEventListener("click", () => endTrip(b.dataset.endTrip)));
+}
+
+function startTrip(id) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return;
+  v.state = "on_trip";
+  v.status = "Active";
+  store.set("saccess_vehicles", vehicles);
+  renderDashboard();
+  toast(`${v.plate} is now ON TRIP`);
+  if (tripTimers[id]) clearInterval(tripTimers[id]);
+  let t = 0;
+  tripTimers[id] = setInterval(() => {
+    t += 1;
+    v.earnings += 5;
+    if (t >= 5) { endTrip(id, true); }
+    else { store.set("saccess_vehicles", vehicles); }
+  }, 4000);
+}
+
+function endTrip(id, silent) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return;
+  v.state = "offline";
+  v.status = "Verified";
+  v.trips += 1;
+  store.set("saccess_vehicles", vehicles);
+  if (tripTimers[id]) { clearInterval(tripTimers[id]); delete tripTimers[id]; }
+  renderDashboard();
+  if (!silent) toast(`${v.plate} is now OFFLINE`);
+}
+
+/* ---------- Profile / generic modals ---------- */
+function renderProfile() {
+  if (!currentUser) return;
+  const initials = currentUser.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  $("#profAvatar").textContent = initials;
+  $("#profName").textContent = currentUser.name;
+  $("#profMeta").textContent = `${currentUser.type} · ${currentUser.email} · ${currentUser.mobile}`;
+}
+
+$("#editProfileBtn").addEventListener("click", () => {
+  if (!currentUser) return;
+  $("#genericModalCard").innerHTML = `
+    <button class="close" onclick="closeModals()">✕</button>
+    <h3>Edit Profile</h3>
+    <p class="muted">Update your account details.</p>
+    <div class="reg-form" style="border:none;padding:0">
+      <label>Full Name<input id="epName" value="${currentUser.name}" /></label>
+      <label>Mobile<input id="epMobile" value="${currentUser.mobile}" /></label>
+      <label>Email<input id="epEmail" value="${currentUser.email}" /></label>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:16px" id="saveProfile">Save Changes</button>`;
+  openModal("genericModal");
+  $("#saveProfile").addEventListener("click", () => {
+    currentUser.name = $("#epName").value;
+    currentUser.mobile = $("#epMobile").value;
+    currentUser.email = $("#epEmail").value;
+    store.set("saccess_user", currentUser);
+    const users = getUsers().map(u => u.email === currentUser.email ? currentUser : u);
+    setUsers(users);
+    closeModals();
+    renderProfile();
+    toast("Profile updated");
+  });
+});
+
+$("#settingsBtn").addEventListener("click", () => genericInfo("Settings", "Settings panel (demo)", "Manage notification preferences, language and appearance."));
+$("#helpBtn").addEventListener("click", () => genericInfo("Help center", "How can we help?", "Visit our FAQ, contact support, or report an issue with a route or vehicle."));
+$("#aboutBtn").addEventListener("click", () => genericInfo("About SAccess", "A Philippine transportation prototype", "SAccess helps commuters compare affordable transportation options, routes, travel times and fares. Design-only interactive prototype for Entrepreneurship / HCI presentation."));
+
+// Ensure subscription buttons are bound after DOM ready (already in DOMContentLoaded, but we also bind now)
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('subscribeFree')?.addEventListener('click', () => openSubscription('free'));
+  document.getElementById('subscribePro')?.addEventListener('click', () => openSubscription('pro'));
+  document.getElementById('subscribeFleet')?.addEventListener('click', () => openSubscription('fleet'));
+});
+
+function genericInfo(title, subtitle, body) {
+  $("#genericModalCard").innerHTML = `
+    <button class="close" onclick="closeModals()">✕</button>
+    <h3>${title}</h3><p class="muted">${subtitle}</p>
+    <p style="color:var(--muted)">${body}</p>
+    <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="closeModals()">Close</button>`;
+  openModal("genericModal");
+}
+
+/* ---------- Init ---------- */
+window.addEventListener("DOMContentLoaded", () => {
+  renderStatic();
+  bindLocationDisplays();
+  // set initial from display
+  const fromDisplay = document.querySelector('#homeFromDisplay') || document.querySelector('#searchFromDisplay');
+  if (fromDisplay) {
+    fromDisplay.textContent = selectedFrom;
+    fromDisplay.dataset.selected = selectedFrom;
+  }
+  if (currentUser) {
+    enterApp();
+    navigate(currentUser.type === "driver" ? "dashboard" : "home", { force: true });
+  } else {
+    showAuth();
+  }
+});
+
+setInterval(() => {
+  const el = $("#trackEta");
+  if (!el) return;
+  let n = parseFloat(el.textContent);
+  if (!isNaN(n) && n > 1) el.textContent = (n - 1).toFixed(0);
+}, 7000);
+
+// Simulate vehicle movement along route
+setInterval(() => {
+  if (!window._vehicleMarker || !window._routePoints) return;
+  let progress = window._vehicleProgress || 0;
+  progress += 0.005;
+  if (progress > 1) progress = 0;
+  window._vehicleProgress = progress;
+  const pts = window._routePoints;
+  const idx = Math.floor(progress * (pts.length - 1));
+  const frac = (progress * (pts.length - 1)) - idx;
+  if (idx < pts.length - 1) {
+    const lat = pts[idx][0] + (pts[idx+1][0] - pts[idx][0]) * frac;
+    const lng = pts[idx][1] + (pts[idx+1][1] - pts[idx][1]) * frac;
+    window._vehicleMarker.setLatLng([lat, lng]);
+  }
+}, 1000);
+  </script>
+</body>
+</html>
